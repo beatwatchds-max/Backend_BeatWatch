@@ -1,2 +1,2 @@
-# BitWatch_BackEnd
-Repositorio para el proyecto BitWatch apartado web
+# BeatWatch_BackEnd
+Repositorio para el proyecto BeatWatch apartado web
