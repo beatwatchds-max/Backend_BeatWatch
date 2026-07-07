@@ -1,0 +1,6 @@
+@BeatWatch_BackEnd_HostAddress = http://localhost:5248
+
+GET {{BeatWatch_BackEnd_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
