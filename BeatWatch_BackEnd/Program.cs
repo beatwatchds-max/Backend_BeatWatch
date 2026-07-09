@@ -1,6 +1,15 @@
+using BeatWatch_BackEnd.Configuration;
+using BeatWatch_BackEnd.Data;
+using BeatWatch_BackEnd.Services;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+builder.Services.Configure<MongoDbSettings>(
+    builder.Configuration.GetSection("MongoDbSettings"));
+
+builder.Services.AddSingleton<MongoDbContext>();
+builder.Services.AddHostedService<MongoDbInitializer>();
 
 builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi

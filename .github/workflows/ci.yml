@@ -1,0 +1,40 @@
+name: DevSecOps CI Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-and-scan:
+    name: Build & Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup .NET SDK
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Dependency Vulnerability Audit
+      run: |
+        echo "Running security audit on dependencies..."
+        dotnet list package --vulnerable --include-transitive
+
+    - name: Build project
+      run: dotnet build --no-restore --configuration Release
+
+    - name: Run tests
+      run: |
+        if [ -f *.sln ]; then
+          dotnet test --no-build --configuration Release
+        else
+          echo "No solution file or test projects found. Skipping tests."
+        fi
