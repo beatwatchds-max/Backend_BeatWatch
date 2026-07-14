@@ -25,6 +25,12 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/openapi/v1.json", "BeatWatch API v1");
+        options.RoutePrefix = "swagger"; // La URL será http://localhost:XXXX/swagger
+    });
 }
 
 app.UseHttpsRedirection();

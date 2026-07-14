@@ -28,6 +28,7 @@ jobs:
       run: dotnet restore BeatWatch_BackEnd.Tests/BeatWatch_BackEnd.Tests.csproj
 
     - name: Dependency Vulnerability Audit
+      working-directory: ./BeatWatch_BackEnd
       run: |
         dotnet list BeatWatch_BackEnd.Tests/BeatWatch_BackEnd.Tests.csproj package --vulnerable --include-transitive
 
