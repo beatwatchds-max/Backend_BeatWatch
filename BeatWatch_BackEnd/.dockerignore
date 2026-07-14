@@ -1,6 +1,7 @@
 **/.classpath
 **/.dockerignore
 **/.env
+**/.env.*
 **/.git
 **/.gitignore
 **/.project
@@ -15,6 +16,7 @@
 **/bin
 **/charts
 **/docker-compose*
+**/appsettings.Development.json
 **/Dockerfile*
 **/node_modules
 **/npm-debug.log
@@ -24,7 +26,3 @@
 LICENSE
 README.md
 !**/.gitignore
-!.git/HEAD
-!.git/config
-!.git/packed-refs
-!.git/refs/heads/**
