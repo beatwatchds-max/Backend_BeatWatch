@@ -22,6 +22,7 @@ jobs:
 
     - name: Restore dependencies
       run: dotnet restore
+      working-directory: BeatWatch_BackEnd
 
     - name: Dependency Vulnerability Audit
       run: |
