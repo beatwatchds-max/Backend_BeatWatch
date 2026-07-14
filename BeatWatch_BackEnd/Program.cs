@@ -3,12 +3,14 @@ using BeatWatch_BackEnd.Data;
 using BeatWatch_BackEnd.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Configuration.AddEnvironmentVariables();
 
 // Add services to the container.
 builder.Services.Configure<MongoDbSettings>(
     builder.Configuration.GetSection("MongoDbSettings"));
 
 builder.Services.AddSingleton<MongoDbContext>();
+builder.Services.AddScoped<IUsuarioService, UsuarioService>();
 builder.Services.AddHostedService<MongoDbInitializer>();
 
 builder.Services.AddControllers();

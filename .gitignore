@@ -8,3 +8,6 @@
 # Carpetas de compilación
 bin/
 obj/
+
+# .env file
+.env
