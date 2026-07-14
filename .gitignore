@@ -9,5 +9,8 @@
 bin/
 obj/
 
-# .env file
+# Archivos de secretos y configuracion local
 .env
+.env.*
+!.env.example
+appsettings.Development.json

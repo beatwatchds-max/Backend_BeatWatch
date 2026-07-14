@@ -7,7 +7,7 @@ namespace BeatWatch_BackEnd.Data
 {
     public class MongoDbContext
     {
-        private readonly IMongoDatabase _database;
+        private readonly IMongoDatabase _database = null!;
 
         // Parameterless constructor for mocking purposes
     public MongoDbContext() {
