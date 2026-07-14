@@ -17,19 +17,15 @@ public class UsuarioService : IUsuarioService
 
     public async Task<Usuario> RegistrarAsync(RegistroRequest request)
     {
-        // Verificar que el correo no exista usando FindAsync y MoveNext para que sea mockeable en pruebas
+        // Forma correcta, limpia y 100% mockeable con MongoDB.Driver v2+
         var cursor = await _context.Usuarios.FindAsync(u => u.Correo == request.Correo);
-        Usuario existente = null;
-        if (cursor.MoveNext())
-        {
-            existente = cursor.Current.FirstOrDefault();
-        }
+        var existente = await cursor.FirstOrDefaultAsync(); // Reemplaza el bloque MoveNext()
+
         if (existente != null)
         {
             throw new InvalidOperationException("El correo ya está registrado.");
         }
 
-        // Generar hash de la contraseña
         var hash = BCrypt.Net.BCrypt.HashPassword(request.Contrasena);
 
         var nuevoUsuario = new Usuario
