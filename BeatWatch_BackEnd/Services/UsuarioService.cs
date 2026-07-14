@@ -19,7 +19,7 @@ public class UsuarioService : IUsuarioService
     {
         // Verificar que el correo no exista usando FindAsync y MoveNext para que sea mockeable en pruebas
         var cursor = await _context.Usuarios.FindAsync(u => u.Correo == request.Correo);
-        Usuario existente = null;
+        Usuario? existente = null;
         if (cursor.MoveNext())
         {
             existente = cursor.Current.FirstOrDefault();
