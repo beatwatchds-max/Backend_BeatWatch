@@ -22,8 +22,10 @@ jobs:
 
     - name: Restore dependencies
       run: dotnet restore
+      working-directory: BeatWatch_BackEnd
 
     - name: Dependency Vulnerability Audit
+      working-directory: ./BeatWatch_BackEnd
       run: |
         echo "Running security audit on dependencies..."
         dotnet list package --vulnerable --include-transitive
