@@ -11,16 +11,18 @@ EXPOSE 8080
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["BeatWatch_BackEnd.csproj", "."]
-RUN dotnet restore "BeatWatch_BackEnd.csproj"
+COPY BeatWatch_BackEnd.csproj ./
+RUN dotnet restore BeatWatch_BackEnd.csproj
 COPY . .
-WORKDIR "/src/."
-RUN dotnet build "BeatWatch_BackEnd.csproj" -c $BUILD_CONFIGURATION --no-restore -o /app/build
+WORKDIR /src
+
+# CORRECCIÓN: Rutas limpias
+RUN dotnet build BeatWatch_BackEnd.csproj -c $BUILD_CONFIGURATION --no-restore -o /app/build
 
 # Esta fase se usa para publicar el proyecto de servicio que se copiará en la fase final.
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "BeatWatch_BackEnd.csproj" -c $BUILD_CONFIGURATION --no-restore -o /app/publish /p:UseAppHost=false
+RUN dotnet publish BeatWatch_BackEnd.csproj -c $BUILD_CONFIGURATION --no-restore -o /app/publish /p:UseAppHost=false
 
 # Esta fase se usa en producción o cuando se ejecuta desde VS en modo normal (valor predeterminado cuando no se usa la configuración de depuración)
 FROM base AS final
