@@ -10,7 +10,7 @@ builder.Services.AddOptions<MongoDbSettings>()
     .Bind(builder.Configuration.GetSection("MongoDbSettings"))
     .ValidateDataAnnotations()
     .ValidateOnStart();
-
+    
 builder.Services.AddSingleton<MongoDbContext>();
 builder.Services.AddScoped<IUsuarioService, UsuarioService>();
 builder.Services.AddHostedService<MongoDbInitializer>();

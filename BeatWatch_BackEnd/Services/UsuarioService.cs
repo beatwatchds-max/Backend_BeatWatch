@@ -17,17 +17,19 @@ public class UsuarioService : IUsuarioService
 
     public async Task<Usuario> RegistrarAsync(RegistroRequest request)
     {
-        // Forma correcta, limpia y 100% mockeable con MongoDB.Driver v2+
+        // 1. Verificación mockeable y segura con FirstOrDefaultAsync
         var cursor = await _context.Usuarios.FindAsync(u => u.Correo == request.Correo);
-        var existente = await cursor.FirstOrDefaultAsync(); // Reemplaza el bloque MoveNext()
+        var existente = await cursor.FirstOrDefaultAsync();
 
         if (existente != null)
         {
             throw new InvalidOperationException("El correo ya está registrado.");
         }
 
+        // 2. Cifrado de contraseña
         var hash = BCrypt.Net.BCrypt.HashPassword(request.Contrasena);
 
+        // 3. Mapear objeto con los datos del formulario de la maqueta
         var nuevoUsuario = new Usuario
         {
             Nombre = request.Nombre,
@@ -35,6 +37,13 @@ public class UsuarioService : IUsuarioService
             Telefono = request.Telefono,
             Contrasena = hash,
             Activo = true,
+
+            // Mapeo de la nueva sección opcional
+            EmpresaOrganizacion = request.EmpresaOrganizacion,
+            RFC = request.RFC,
+            Direccion = request.Direccion,
+            CiudadEstado = request.CiudadEstado,
+
             Cuidadores = new List<string>()
         };
 
