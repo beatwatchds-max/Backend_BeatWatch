@@ -50,4 +50,18 @@ public class UsuarioService : IUsuarioService
         await _context.Usuarios.InsertOneAsync(nuevoUsuario);
         return nuevoUsuario;
     }
+
+    public async Task<Usuario?> AutenticarAsync(string correo, string contrasena)
+    {
+        var normalizedEmail = correo.Trim().ToLowerInvariant();
+        var cursor = await _context.Usuarios.FindAsync(u => u.Correo == normalizedEmail);
+        var usuario = await cursor.FirstOrDefaultAsync();
+
+        if (usuario is null || !usuario.Activo || !BCrypt.Net.BCrypt.Verify(contrasena, usuario.Contrasena))
+        {
+            return null;
+        }
+
+        return usuario;
+    }
 }

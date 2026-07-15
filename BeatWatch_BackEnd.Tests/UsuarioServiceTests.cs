@@ -28,8 +28,8 @@ namespace BeatWatch_Back_End.Tests
         {
             // Arrange: la búsqueda retorna null
             var mockFindFluent = new Mock<IAsyncCursor<Usuario>>();
-            mockFindFluent.SetupSequence(c => c.MoveNext(It.IsAny<CancellationToken>()))
-                .Returns(false);
+            mockFindFluent.SetupSequence(c => c.MoveNextAsync(It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult(false));
             mockFindFluent.Setup(c => c.Current).Returns(new List<Usuario>());
             _mockCollection.Setup(c => c.FindAsync(It.IsAny<FilterDefinition<Usuario>>(), It.IsAny<FindOptions<Usuario, Usuario>>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(mockFindFluent.Object);
@@ -59,8 +59,9 @@ namespace BeatWatch_Back_End.Tests
             // Arrange: la búsqueda devuelve un usuario existente
             var existingUser = new Usuario { Correo = "juan@example.com" };
             var mockFindFluent = new Mock<IAsyncCursor<Usuario>>();
-            mockFindFluent.SetupSequence(c => c.MoveNext(It.IsAny<CancellationToken>()))
-                .Returns(true);
+            mockFindFluent.SetupSequence(c => c.MoveNextAsync(It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult(true))
+                .Returns(Task.FromResult(false));
             mockFindFluent.Setup(c => c.Current).Returns(new List<Usuario> { existingUser });
             _mockCollection.Setup(c => c.FindAsync(It.IsAny<FilterDefinition<Usuario>>(), It.IsAny<FindOptions<Usuario, Usuario>>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(mockFindFluent.Object);
@@ -75,6 +76,68 @@ namespace BeatWatch_Back_End.Tests
 
             // Act & Assert
             await Assert.ThrowsAsync<InvalidOperationException>(() => _service.RegistrarAsync(request));
+        }
+
+        [Fact]
+        public async Task AutenticarAsync_RetornaUsuarioCuandoLasCredencialesSonValidas()
+        {
+            var usuario = new Usuario
+            {
+                Correo = "juan@example.com",
+                Contrasena = BCrypt.Net.BCrypt.HashPassword("Password123"),
+                Activo = true
+            };
+            SetupFindResult(usuario);
+
+            var result = await _service.AutenticarAsync(" JUAN@example.com ", "Password123");
+
+            Assert.Same(usuario, result);
+        }
+
+        [Fact]
+        public async Task AutenticarAsync_RetornaNuloCuandoLaContrasenaEsInvalida()
+        {
+            var usuario = new Usuario
+            {
+                Correo = "juan@example.com",
+                Contrasena = BCrypt.Net.BCrypt.HashPassword("Password123"),
+                Activo = true
+            };
+            SetupFindResult(usuario);
+
+            var result = await _service.AutenticarAsync("juan@example.com", "ContrasenaInvalida");
+
+            Assert.Null(result);
+        }
+
+        [Fact]
+        public async Task AutenticarAsync_RetornaNuloCuandoElUsuarioEstaInactivo()
+        {
+            var usuario = new Usuario
+            {
+                Correo = "juan@example.com",
+                Contrasena = BCrypt.Net.BCrypt.HashPassword("Password123"),
+                Activo = false
+            };
+            SetupFindResult(usuario);
+
+            var result = await _service.AutenticarAsync("juan@example.com", "Password123");
+
+            Assert.Null(result);
+        }
+
+        private void SetupFindResult(Usuario usuario)
+        {
+            var cursor = new Mock<IAsyncCursor<Usuario>>();
+            cursor.SetupSequence(c => c.MoveNextAsync(It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult(true))
+                .Returns(Task.FromResult(false));
+            cursor.Setup(c => c.Current).Returns(new List<Usuario> { usuario });
+            _mockCollection.Setup(c => c.FindAsync(
+                    It.IsAny<FilterDefinition<Usuario>>(),
+                    It.IsAny<FindOptions<Usuario, Usuario>>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(cursor.Object);
         }
     }
 }
