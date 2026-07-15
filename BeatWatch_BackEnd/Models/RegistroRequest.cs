@@ -18,5 +18,10 @@ namespace BeatWatch_BackEnd.Models
         [Required]
         [MinLength(8)]
         public string Contrasena { get; set; } = null!;
+
+        public string? EmpresaOrganizacion { get; set; }
+        public string? RFC { get; set; }
+        public string? Direccion { get; set; }
+        public string? CiudadEstado { get; set; }
     }
 }

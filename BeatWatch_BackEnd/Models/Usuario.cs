@@ -24,6 +24,11 @@ namespace BeatWatch_BackEnd.Models
         [BsonElement("Activo")]
         public bool Activo { get; set; } = true;
 
+        public string? EmpresaOrganizacion { get; set; }
+        public string? RFC { get; set; }
+        public string? Direccion { get; set; }
+        public string? CiudadEstado { get; set; }
+
         [BsonElement("Cuidadores")]
         [BsonRepresentation(BsonType.ObjectId)]
         public List<string> Cuidadores { get; set; } = new();
