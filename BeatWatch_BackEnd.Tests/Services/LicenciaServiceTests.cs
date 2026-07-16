@@ -8,7 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
-namespace BeatWatch_Back_End.Tests
+namespace BeatWatch_BackEnd.Tests.Services
 {
     public class LicenciaServiceTests
     {

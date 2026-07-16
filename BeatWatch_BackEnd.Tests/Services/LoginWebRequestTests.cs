@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using BeatWatch_BackEnd.Models;
 
-namespace BeatWatch_Back_End.Tests;
+namespace BeatWatch_BackEnd.Tests.Services;
 
 public class LoginWebRequestTests
 {
