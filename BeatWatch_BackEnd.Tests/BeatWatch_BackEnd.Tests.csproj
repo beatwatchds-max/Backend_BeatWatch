@@ -16,11 +16,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Using Include="Xunit" />
+    <ProjectReference Include="..\BeatWatch_BackEnd\BeatWatch_BackEnd.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\BeatWatch_BackEnd\BeatWatch_BackEnd.csproj" />
+    <Using Include="Xunit" />
   </ItemGroup>
 
 </Project>
