@@ -13,6 +13,4 @@ public class LoginWebRequest
     [StringLength(128, MinimumLength = 8)]
     public string Contrasena { get; set; } = null!;
 
-    [StringLength(4096)]
-    public string? RecaptchaToken { get; set; }
 }

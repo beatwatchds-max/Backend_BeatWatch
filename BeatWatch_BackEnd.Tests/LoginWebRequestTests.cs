@@ -6,13 +6,12 @@ namespace BeatWatch_Back_End.Tests;
 public class LoginWebRequestTests
 {
     [Fact]
-    public void Validate_AdmiteCredencialesYTokenValidos()
+    public void Validate_AdmiteCredencialesValidas()
     {
         var request = new LoginWebRequest
         {
             Correo = "usuario@example.com",
-            Contrasena = "Password123",
-            RecaptchaToken = "captcha-token"
+            Contrasena = "Password123"
         };
 
         var errors = Validate(request);
@@ -34,8 +33,7 @@ public class LoginWebRequestTests
         var request = new LoginWebRequest
         {
             Correo = "correo-invalido",
-            Contrasena = "Password123",
-            RecaptchaToken = "captcha-token"
+            Contrasena = "Password123"
         };
 
         var errors = Validate(request);
