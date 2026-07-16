@@ -13,6 +13,8 @@ builder.Services.AddOptions<MongoDbSettings>()
     
 builder.Services.AddSingleton<MongoDbContext>();
 builder.Services.AddScoped<IUsuarioService, UsuarioService>();
+builder.Services.AddScoped<ILicenciaService, LicenciaService>();
+builder.Services.AddScoped<IReporteService, ReporteService>();
 builder.Services.AddHostedService<MongoDbInitializer>();
 
 builder.Services.AddControllers();
