@@ -23,6 +23,9 @@ builder.Services.AddOptions<RecaptchaSettings>()
     .Bind(builder.Configuration.GetSection("RecaptchaSettings"))
     .ValidateDataAnnotations()
     .ValidateOnStart();
+builder.Services.AddOptions<EmailSettings>()
+    .Bind(builder.Configuration.GetSection("EmailSettings"))
+    .ValidateDataAnnotations();
 
 var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>()
     ?? throw new InvalidOperationException("La configuracion JWT es obligatoria.");
@@ -46,12 +49,17 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddRateLimiter(options => options.AddPolicy("login", context =>
     RateLimitPartition.GetFixedWindowLimiter(
         context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-        _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 })));
+         _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 })));
+builder.Services.AddRateLimiter(options => options.AddPolicy("password-recovery", context =>
+    RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 3, Window = TimeSpan.FromMinutes(15), QueueLimit = 0 })));
     
 builder.Services.AddSingleton<MongoDbContext>();
 builder.Services.AddScoped<IUsuarioService, UsuarioService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddHttpClient<ICaptchaVerifier, RecaptchaVerifier>(client => client.BaseAddress = new Uri("https://www.google.com/"));
+builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 builder.Services.AddScoped<ILicenciaService, LicenciaService>();
 builder.Services.AddScoped<IReporteService, ReporteService>();
 builder.Services.AddHostedService<MongoDbInitializer>();

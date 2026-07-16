@@ -12,13 +12,17 @@ public class AuthController : ControllerBase
     private readonly IUsuarioService _usuarioService;
     private readonly ICaptchaVerifier _captchaVerifier;
     private readonly ITokenService _tokenService;
+    private readonly IEmailService _emailService;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<AuthController> _logger;
 
-    public AuthController(IUsuarioService usuarioService, ICaptchaVerifier captchaVerifier, ITokenService tokenService, ILogger<AuthController> logger)
+    public AuthController(IUsuarioService usuarioService, ICaptchaVerifier captchaVerifier, ITokenService tokenService, IEmailService emailService, IConfiguration configuration, ILogger<AuthController> logger)
     {
         _usuarioService = usuarioService;
         _captchaVerifier = captchaVerifier;
         _tokenService = tokenService;
+        _emailService = emailService;
+        _configuration = configuration;
         _logger = logger;
     }
 
@@ -53,5 +57,40 @@ public class AuthController : ControllerBase
         }
 
         return Ok(_tokenService.CreateAccessToken(usuario));
+    }
+
+    [HttpPost("recuperar-contrasena")]
+    [EnableRateLimiting("password-recovery")]
+    public async Task<IActionResult> SolicitarRestablecimiento([FromBody] SolicitarRestablecimientoRequest request, CancellationToken cancellationToken)
+    {
+        var token = await _usuarioService.CrearTokenRestablecimientoAsync(request.Correo, cancellationToken);
+        var resetUrl = _configuration["EmailSettings:PasswordResetUrl"];
+        if (token is not null && !string.IsNullOrWhiteSpace(resetUrl))
+        {
+            var separator = resetUrl.Contains('?') ? '&' : '?';
+            try
+            {
+                await _emailService.SendPasswordResetAsync(request.Correo, $"{resetUrl}{separator}token={Uri.EscapeDataString(token)}", cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "No se pudo enviar el correo de restablecimiento.");
+            }
+        }
+
+        return Accepted(new { message = "Si el correo esta registrado, recibira instrucciones para restablecer su contrasena." });
+    }
+
+    [HttpPost("restablecer-contrasena")]
+    [EnableRateLimiting("password-recovery")]
+    public async Task<IActionResult> RestablecerContrasena([FromBody] RestablecerContrasenaRequest request, CancellationToken cancellationToken)
+    {
+        var restablecida = await _usuarioService.RestablecerContrasenaAsync(request.Token, request.Contrasena, cancellationToken);
+        if (!restablecida)
+        {
+            return BadRequest(new { message = "El enlace de restablecimiento no es valido o ha expirado." });
+        }
+
+        return NoContent();
     }
 }
