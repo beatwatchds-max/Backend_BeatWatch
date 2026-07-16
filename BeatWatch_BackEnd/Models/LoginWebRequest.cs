@@ -13,7 +13,6 @@ public class LoginWebRequest
     [StringLength(128, MinimumLength = 8)]
     public string Contrasena { get; set; } = null!;
 
-    [Required(ErrorMessage = "El token de reCAPTCHA es obligatorio.")]
     [StringLength(4096)]
-    public string RecaptchaToken { get; set; } = null!;
+    public string? RecaptchaToken { get; set; }
 }

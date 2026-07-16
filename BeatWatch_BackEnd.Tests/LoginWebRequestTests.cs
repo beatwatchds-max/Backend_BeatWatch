@@ -25,7 +25,7 @@ public class LoginWebRequestTests
     {
         var errors = Validate(new LoginWebRequest());
 
-        Assert.Equal(3, errors.Count);
+        Assert.Equal(2, errors.Count);
     }
 
     [Fact]

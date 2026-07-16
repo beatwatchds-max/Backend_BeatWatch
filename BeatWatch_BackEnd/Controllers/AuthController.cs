@@ -2,6 +2,8 @@ using BeatWatch_BackEnd.Models;
 using BeatWatch_BackEnd.Services;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Mvc;
+using BeatWatch_BackEnd.Configuration;
+using Microsoft.Extensions.Options;
 
 namespace BeatWatch_BackEnd.Controllers;
 
@@ -14,15 +16,17 @@ public class AuthController : ControllerBase
     private readonly ITokenService _tokenService;
     private readonly IEmailService _emailService;
     private readonly IConfiguration _configuration;
+    private readonly RecaptchaSettings _recaptchaSettings;
     private readonly ILogger<AuthController> _logger;
 
-    public AuthController(IUsuarioService usuarioService, ICaptchaVerifier captchaVerifier, ITokenService tokenService, IEmailService emailService, IConfiguration configuration, ILogger<AuthController> logger)
+    public AuthController(IUsuarioService usuarioService, ICaptchaVerifier captchaVerifier, ITokenService tokenService, IEmailService emailService, IConfiguration configuration, IOptions<RecaptchaSettings> recaptchaSettings, ILogger<AuthController> logger)
     {
         _usuarioService = usuarioService;
         _captchaVerifier = captchaVerifier;
         _tokenService = tokenService;
         _emailService = emailService;
         _configuration = configuration;
+        _recaptchaSettings = recaptchaSettings.Value;
         _logger = logger;
     }
 
@@ -45,7 +49,8 @@ public class AuthController : ControllerBase
     public async Task<ActionResult<LoginResponse>> Login([FromBody] LoginWebRequest request, CancellationToken cancellationToken)
     {
         var remoteIpAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
-        var captchaValid = await _captchaVerifier.IsValidAsync(request.RecaptchaToken, remoteIpAddress, cancellationToken);
+        var captchaValid = !_recaptchaSettings.Enabled
+            || await _captchaVerifier.IsValidAsync(request.RecaptchaToken ?? string.Empty, remoteIpAddress, cancellationToken);
         var usuario = captchaValid
             ? await _usuarioService.AutenticarAsync(request.Correo, request.Contrasena)
             : null;

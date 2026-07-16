@@ -4,6 +4,8 @@ namespace BeatWatch_BackEnd.Configuration;
 
 public sealed class RecaptchaSettings
 {
+    public bool Enabled { get; init; } = true;
+
     // La clave de sitio es publica y solo la consume el cliente web.
     public string? SiteKey { get; init; }
 

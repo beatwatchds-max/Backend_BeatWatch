@@ -25,6 +25,8 @@ En despliegues, usa las variables de entorno de `.env.example` desde un gestor d
 
 La clave de sitio de reCAPTCHA debe configurarse en el cliente web; el backend usa exclusivamente `RecaptchaSettings:SecretKey` para verificar los tokens.
 
+Para pruebas locales de login puede desactivarse temporalmente con `dotnet user-secrets set "RecaptchaSettings:Enabled" "false" --project BeatWatch_BackEnd/BeatWatch_BackEnd.csproj`. No uses esa configuracion en produccion.
+
 ## Recuperacion de contrasena
 
 Configura SMTP y `EmailSettings:PasswordResetUrl` antes de activar el formulario web. `POST /api/autenticacion/recuperar-contrasena` recibe `{ "correo": "..." }` y siempre responde igual para no revelar cuentas registradas. El enlace contiene un token de un solo uso con vigencia de una hora. El formulario debe enviar `{ "token": "...", "contrasena": "..." }` a `POST /api/autenticacion/restablecer-contrasena`.
