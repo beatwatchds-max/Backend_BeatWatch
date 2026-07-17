@@ -1,18 +1,17 @@
 using System.ComponentModel.DataAnnotations;
 using BeatWatch_BackEnd.Models;
 
-namespace BeatWatch_Back_End.Tests;
+namespace BeatWatch_BackEnd.Tests.Services;
 
 public class LoginWebRequestTests
 {
     [Fact]
-    public void Validate_AdmiteCredencialesYTokenValidos()
+    public void Validate_AdmiteCredencialesValidas()
     {
         var request = new LoginWebRequest
         {
             Correo = "usuario@example.com",
-            Contrasena = "Password123",
-            RecaptchaToken = "captcha-token"
+            Contrasena = "Password123"
         };
 
         var errors = Validate(request);
@@ -25,7 +24,7 @@ public class LoginWebRequestTests
     {
         var errors = Validate(new LoginWebRequest());
 
-        Assert.Equal(3, errors.Count);
+        Assert.Equal(2, errors.Count);
     }
 
     [Fact]
@@ -34,8 +33,7 @@ public class LoginWebRequestTests
         var request = new LoginWebRequest
         {
             Correo = "correo-invalido",
-            Contrasena = "Password123",
-            RecaptchaToken = "captcha-token"
+            Contrasena = "Password123"
         };
 
         var errors = Validate(request);

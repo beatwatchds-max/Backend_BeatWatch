@@ -21,6 +21,12 @@ namespace BeatWatch_BackEnd.Models
         [BsonElement("Contrasena")]
         public string Contrasena { get; set; } = null!;
 
+        [BsonElement("RestablecimientoContrasenaTokenHash")]
+        public string? RestablecimientoContrasenaTokenHash { get; set; }
+
+        [BsonElement("RestablecimientoContrasenaExpiraEn")]
+        public DateTime? RestablecimientoContrasenaExpiraEn { get; set; }
+
         [BsonElement("Activo")]
         public bool Activo { get; set; } = true;
 
