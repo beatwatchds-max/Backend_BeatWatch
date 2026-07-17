@@ -31,6 +31,22 @@ namespace BeatWatch_BackEnd.Services
                 estadoPago = "Pendiente";
                 licenciaActiva = false; // Requiere pago físico en tienda
             }
+            else if (pagoDto.MetodoPago.ToUpper() == "TARJETA")
+            {
+                // Simulación de validación bancaria real basada en la maqueta
+                if (string.IsNullOrWhiteSpace(pagoDto.NumeroTarjeta) ||
+                    string.IsNullOrWhiteSpace(pagoDto.NombreTitular) ||
+                    string.IsNullOrWhiteSpace(pagoDto.FechaExpiracion) ||
+                    string.IsNullOrWhiteSpace(pagoDto.Cvv))
+                {
+                    throw new ArgumentException("Todos los campos de la tarjeta son obligatorios para procesar el pago.");
+                }
+
+                if (pagoDto.Cvv.Length < 3 || pagoDto.Cvv.Length > 4)
+                {
+                    throw new ArgumentException("El código CVV no es válido (Debe tener 3 o 4 dígitos).");
+                }
+            }
 
             // 3. Generar Código de Grupo único si es Plan Grupal
             string codigoGrupoUnico = pagoDto.TipoLicencia == "Grupal"
