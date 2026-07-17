@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="../BeatWatch_BackEnd.Tests/BeatWatch_BackEnd.Tests.csproj">
+    <Build Solution="Debug|*" Project="false" />
+  </Project>
+  <Project Path="BeatWatch_BackEnd.csproj" />
+</Solution>

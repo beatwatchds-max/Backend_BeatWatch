@@ -14,5 +14,4 @@ obj/
 .env.*
 !.env.example
 appsettings.Development.json
-/BeatWatch_BackEnd/appsettings.json
-/BeatWatch_BackEnd/BeatWatch_BackEnd.slnx
+
