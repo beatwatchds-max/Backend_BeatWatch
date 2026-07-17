@@ -3,6 +3,8 @@ using BeatWatch_BackEnd.Models;
 using BeatWatch_BackEnd.Data;
 using BCrypt.Net;
 using MongoDB.Driver;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace BeatWatch_BackEnd.Services;
 
@@ -50,4 +52,59 @@ public class UsuarioService : IUsuarioService
         await _context.Usuarios.InsertOneAsync(nuevoUsuario);
         return nuevoUsuario;
     }
+
+    public async Task<Usuario?> AutenticarAsync(string correo, string contrasena)
+    {
+        var normalizedEmail = correo.Trim().ToLowerInvariant();
+        var cursor = await _context.Usuarios.FindAsync(u => u.Correo == normalizedEmail);
+        var usuario = await cursor.FirstOrDefaultAsync();
+
+        if (usuario is null || !usuario.Activo || !BCrypt.Net.BCrypt.Verify(contrasena, usuario.Contrasena))
+        {
+            return null;
+        }
+
+        return usuario;
+    }
+
+    public async Task<string?> CrearTokenRestablecimientoAsync(string correo, CancellationToken cancellationToken = default)
+    {
+        var normalizedEmail = correo.Trim().ToLowerInvariant();
+        var usuario = await _context.Usuarios.Find(u => u.Correo == normalizedEmail && u.Activo)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (usuario is null)
+        {
+            return null;
+        }
+
+        var token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
+            .TrimEnd('=')
+            .Replace('+', '-')
+            .Replace('/', '_');
+        var tokenHash = HashToken(token);
+        var expiration = DateTime.UtcNow.AddHours(1);
+        var update = Builders<Usuario>.Update
+            .Set(u => u.RestablecimientoContrasenaTokenHash, tokenHash)
+            .Set(u => u.RestablecimientoContrasenaExpiraEn, expiration);
+        await _context.Usuarios.UpdateOneAsync(u => u.Id == usuario.Id, update, cancellationToken: cancellationToken);
+
+        return token;
+    }
+
+    public async Task<bool> RestablecerContrasenaAsync(string token, string contrasena, CancellationToken cancellationToken = default)
+    {
+        var tokenHash = HashToken(token);
+        var filter = Builders<Usuario>.Filter.And(
+            Builders<Usuario>.Filter.Eq(u => u.RestablecimientoContrasenaTokenHash, tokenHash),
+            Builders<Usuario>.Filter.Gt(u => u.RestablecimientoContrasenaExpiraEn, DateTime.UtcNow));
+        var update = Builders<Usuario>.Update
+            .Set(u => u.Contrasena, BCrypt.Net.BCrypt.HashPassword(contrasena))
+            .Unset(u => u.RestablecimientoContrasenaTokenHash)
+            .Unset(u => u.RestablecimientoContrasenaExpiraEn);
+        var result = await _context.Usuarios.UpdateOneAsync(filter, update, cancellationToken: cancellationToken);
+
+        return result.ModifiedCount == 1;
+    }
+
+    private static string HashToken(string token) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
 }
