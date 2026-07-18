@@ -1,7 +1,8 @@
-using BeatWatch_BackEnd.Services;
-using BeatWatch_BackEnd.Models;
-using BeatWatch_BackEnd.Data;
 using BCrypt.Net;
+using BeatWatch_BackEnd.Data;
+using BeatWatch_BackEnd.infrescture;
+using BeatWatch_BackEnd.Models;
+using MongoDB.Bson;
 using MongoDB.Driver;
 using System.Security.Cryptography;
 using System.Text;
@@ -107,4 +108,47 @@ public class UsuarioService : IUsuarioService
     }
 
     private static string HashToken(string token) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
+
+    public async Task<ResultadoPaginado<Usuario>> ObtenerUsuariosPaginadosAsync(int page, int pageSize, string? searchName, string? searchEmail)
+    {
+        // 1. Inicializar el constructor de filtros
+        var builder = Builders<Usuario>.Filter;
+        var filtro = builder.Empty; // Por defecto, trae todo
+
+        // 2. Aplicar filtros si el administrador envió parámetros
+        if (!string.IsNullOrWhiteSpace(searchName))
+        {
+            filtro &= builder.Regex(u => u.Nombre, new BsonRegularExpression(searchName, "i"));
+        }
+
+        if (!string.IsNullOrWhiteSpace(searchEmail))
+        {
+            // Corregido: Usamos u.Correo según tu modelo
+            filtro &= builder.Regex(u => u.Correo, new BsonRegularExpression(searchEmail, "i"));
+        }
+
+        // 3. Contar el total de documentos que coinciden con el filtro
+        // Corregido: Usamos _context.Usuarios
+        var totalRegistros = await _context.Usuarios.CountDocumentsAsync(filtro);
+
+        // 4. Calcular el salto (Skip)
+        var saltar = (page - 1) * pageSize;
+
+        // 5. Ejecutar la consulta con Skip y Limit
+        // Corregido: Usamos _context.Usuarios
+        var usuarios = await _context.Usuarios.Find(filtro)
+                                              .Skip(saltar)
+                                              .Limit(pageSize)
+                                              .ToListAsync();
+
+        // 6. Retornar el objeto paginado
+        return new ResultadoPaginado<Usuario>
+        {
+            TotalRegistros = totalRegistros,
+            PaginaActual = page,
+            TotalPaginas = (int)Math.Ceiling(totalRegistros / (double)pageSize),
+            Datos = usuarios
+        };
+    }
+
 }

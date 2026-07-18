@@ -1,6 +1,6 @@
 using BeatWatch_BackEnd.Models;
 
-namespace BeatWatch_BackEnd.Services
+namespace BeatWatch_BackEnd.infrescture
 {
 
 public interface IUsuarioService
@@ -9,5 +9,6 @@ public interface IUsuarioService
     Task<Usuario?> AutenticarAsync(string correo, string contrasena);
     Task<string?> CrearTokenRestablecimientoAsync(string correo, CancellationToken cancellationToken = default);
     Task<bool> RestablecerContrasenaAsync(string token, string contrasena, CancellationToken cancellationToken = default);
-}
+        Task<ResultadoPaginado<Usuario>> ObtenerUsuariosPaginadosAsync(int page, int pageSize, string? searchName, string? searchEmail);
+    }
 }

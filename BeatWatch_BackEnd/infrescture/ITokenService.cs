@@ -1,6 +1,6 @@
 using BeatWatch_BackEnd.Models;
 
-namespace BeatWatch_BackEnd.Services;
+namespace BeatWatch_BackEnd.infrescture;
 
 public interface ITokenService
 {
