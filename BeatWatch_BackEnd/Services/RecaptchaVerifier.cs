@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using BeatWatch_BackEnd.Configuration;
+using BeatWatch_BackEnd.infrescture;
 using Microsoft.Extensions.Options;
 
 namespace BeatWatch_BackEnd.Services;

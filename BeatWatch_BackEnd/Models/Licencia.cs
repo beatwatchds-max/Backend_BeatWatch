@@ -41,6 +41,8 @@ namespace BeatWatch_BackEnd.Models
         public string CorreoElectronico { get; set; } = null!;
 
         // Datos simulados de tarjeta (opcionales para la simulación básica)
+        public string? FechaExpiracion { get; set; } // Nuevo: Recibe el "MM/AA"
+        public string? Cvv { get; set; }
         public string? NumeroTarjeta { get; set; }
         public string? NombreTitular { get; set; }
     }

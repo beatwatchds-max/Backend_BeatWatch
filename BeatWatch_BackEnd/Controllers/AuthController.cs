@@ -1,7 +1,7 @@
 using BeatWatch_BackEnd.Models;
-using BeatWatch_BackEnd.Services;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Mvc;
+using BeatWatch_BackEnd.infrescture;
 
 namespace BeatWatch_BackEnd.Controllers;
 

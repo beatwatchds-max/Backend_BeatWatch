@@ -1,4 +1,4 @@
-namespace BeatWatch_BackEnd.Services;
+namespace BeatWatch_BackEnd.infrescture;
 
 public interface ICaptchaVerifier
 {
