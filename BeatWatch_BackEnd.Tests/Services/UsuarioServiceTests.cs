@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
+using BeatWatch_BackEnd.infrescture;
 
 namespace BeatWatch_BackEnd.Tests.Services
 {

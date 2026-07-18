@@ -38,5 +38,12 @@ namespace BeatWatch_BackEnd.Models
         [BsonElement("Cuidadores")]
         [BsonRepresentation(BsonType.ObjectId)]
         public List<string> Cuidadores { get; set; } = new();
+        public string? TokenMovil { get; set; }
+        [BsonElement("Rol")]
+        public string Rol { get; set; } = "Paciente";
+
+        [BsonElement("FechaCreacion")]
+        [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
+        public DateTime FechaCreacion { get; set; }
     }
 }
