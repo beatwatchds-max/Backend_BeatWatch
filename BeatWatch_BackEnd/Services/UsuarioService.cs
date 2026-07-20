@@ -18,6 +18,27 @@ public class UsuarioService : IUsuarioService
         _context = context;
     }
 
+    // Método privado para generar y garantizar la unicidad del token de 9 dígitos
+    private async Task<string> GenerarTokenNumericoUnicoAsync()
+    {
+        string tokenGenerado;
+        bool tokenExiste;
+
+        do
+        {
+            // Genera un número aleatorio seguro entre 100,000,000 y 999,999,999
+            int numeroAleatorio = RandomNumberGenerator.GetInt32(100000000, 999999999);
+            tokenGenerado = numeroAleatorio.ToString();
+
+            // Validar contra la base de datos que no exista ya
+            var filter = Builders<Usuario>.Filter.Eq(u => u.TokenMovil, tokenGenerado);
+            tokenExiste = await _context.Usuarios.Find(filter).AnyAsync();
+
+        } while (tokenExiste);
+
+        return tokenGenerado;
+    }
+
     public async Task<Usuario> RegistrarAsync(RegistroRequest request)
     {
         // 1. Verificación mockeable y segura con FirstOrDefaultAsync
@@ -32,7 +53,10 @@ public class UsuarioService : IUsuarioService
         // 2. Cifrado de contraseña
         var hash = BCrypt.Net.BCrypt.HashPassword(request.Contrasena);
 
-        // 3. Mapear objeto con los datos del formulario de la maqueta
+        // 3. Generar el token de 9 dígitos para el administrador
+        string nuevoToken = await GenerarTokenNumericoUnicoAsync();
+
+        // 4. Mapear objeto con los datos del formulario de la maqueta
         var nuevoUsuario = new Usuario
         {
             Nombre = request.Nombre,
@@ -41,7 +65,12 @@ public class UsuarioService : IUsuarioService
             Contrasena = hash,
             Activo = true,
 
-            // Mapeo de la nueva sección opcional
+            // Aquí agregamos los campos solicitados
+            Rol = "Administrador",
+            TokenMovil = nuevoToken,
+            FechaCreacion = DateTime.UtcNow,
+
+            // Mapeo de la sección opcional
             EmpresaOrganizacion = request.EmpresaOrganizacion,
             RFC = request.RFC,
             Direccion = request.Direccion,

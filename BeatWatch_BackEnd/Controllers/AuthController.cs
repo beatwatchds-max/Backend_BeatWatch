@@ -25,12 +25,20 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("registrar")]
-    public async Task<ActionResult<Usuario>> Registrar([FromBody] RegistroRequest request)
+    public async Task<ActionResult> Registrar([FromBody] RegistroRequest request)
     {
         try
         {
             var usuario = await _usuarioService.RegistrarAsync(request);
-            return CreatedAtAction(nameof(Registrar), new { id = usuario.Id }, usuario);
+
+            // Devolvemos una respuesta estructurada que incluya el token
+            return CreatedAtAction(nameof(Registrar), new { id = usuario.Id }, new
+            {
+                mensaje = "Administrador registrado con éxito.",
+                usuarioId = usuario.Id,
+                tokenGenerado = usuario.TokenMovil,
+                rol = usuario.Rol
+            });
         }
         catch (InvalidOperationException ex)
         {
