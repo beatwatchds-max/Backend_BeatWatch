@@ -151,4 +151,65 @@ public class UsuarioService : IUsuarioService
         };
     }
 
+    public async Task<bool> DesactivarAsync(string id, CancellationToken cancellationToken = default)
+    {
+        var usuarioId = ValidarObjectId(id, nameof(id));
+        var update = Builders<Usuario>.Update
+            .Set(u => u.Activo, false)
+            .Unset(u => u.RestablecimientoContrasenaTokenHash)
+            .Unset(u => u.RestablecimientoContrasenaExpiraEn);
+        var result = await _context.Usuarios.UpdateOneAsync(
+            u => u.Id == usuarioId,
+            update,
+            cancellationToken: cancellationToken);
+
+        return result.MatchedCount == 1;
+    }
+
+    public async Task<bool> ActualizarCuidadoresAsync(
+        string id,
+        IReadOnlyCollection<string> cuidadores,
+        CancellationToken cancellationToken = default)
+    {
+        var usuarioId = ValidarObjectId(id, nameof(id));
+        ArgumentNullException.ThrowIfNull(cuidadores);
+        var cuidadoresNormalizados = cuidadores
+            .Select(cuidadorId => ValidarObjectId(cuidadorId, "cuidadorId"))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        var update = Builders<Usuario>.Update.Set(u => u.Cuidadores, cuidadoresNormalizados);
+        var result = await _context.Usuarios.UpdateOneAsync(
+            u => u.Id == usuarioId,
+            update,
+            cancellationToken: cancellationToken);
+
+        return result.MatchedCount == 1;
+    }
+
+    public async Task<bool> DesvincularCuidadorAsync(
+        string id,
+        string cuidadorId,
+        CancellationToken cancellationToken = default)
+    {
+        var usuarioId = ValidarObjectId(id, nameof(id));
+        var cuidadorIdValidado = ValidarObjectId(cuidadorId, nameof(cuidadorId));
+        var update = Builders<Usuario>.Update.Pull(u => u.Cuidadores, cuidadorIdValidado);
+        var result = await _context.Usuarios.UpdateOneAsync(
+            u => u.Id == usuarioId,
+            update,
+            cancellationToken: cancellationToken);
+
+        return result.MatchedCount == 1;
+    }
+
+    private static string ValidarObjectId(string id, string nombreParametro)
+    {
+        if (!ObjectId.TryParse(id, out _))
+        {
+            throw new ArgumentException("El identificador no tiene un formato válido.", nombreParametro);
+        }
+
+        return id;
+    }
+
 }

@@ -2,6 +2,8 @@
 using BeatWatch_BackEnd.infrescture;
 using BeatWatch_BackEnd.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Moq;
 using System;
 using System.Threading.Tasks;
@@ -12,15 +14,28 @@ namespace BeatWatch_Back_End.Tests.Controllers // ◄ Namespace apuntando a Cont
     public class AuthControllerTests
     {
         private readonly Mock<IUsuarioService> _mockUsuarioService;
+        private readonly Mock<ITokenService> _mockTokenService;
+        private readonly Mock<IEmailService> _mockEmailService;
+        private readonly Mock<IConfiguration> _mockConfiguration;
+        private readonly Mock<ILogger<AuthController>> _mockLogger;
         private readonly AuthController _controller;
 
         public AuthControllerTests()
         {
             // Creamos el mock del servicio que requiere el controlador
             _mockUsuarioService = new Mock<IUsuarioService>();
+            _mockTokenService = new Mock<ITokenService>();
+            _mockEmailService = new Mock<IEmailService>();
+            _mockConfiguration = new Mock<IConfiguration>();
+            _mockLogger = new Mock<ILogger<AuthController>>();
 
             // Instanciamos el controlador inyectándole el mock
-            _controller = new AuthController(_mockUsuarioService.Object);
+            _controller = new AuthController(
+                _mockUsuarioService.Object,
+                _mockTokenService.Object,
+                _mockEmailService.Object,
+                _mockConfiguration.Object,
+                _mockLogger.Object);
         }
 
         [Fact]
