@@ -53,3 +53,20 @@ docker compose -f docker-compose.ci.yml down --volumes --remove-orphans
 ```
 
 No uses secretos reales en `appsettings.json` ni en `.env.example`. Si una credencial fue versionada previamente, revócala en el proveedor antes de continuar.
+
+## Despliegue
+
+Un `push` a `main` publica una imagen inmutable en GitHub Container Registry sólo después de pasar las pruebas, escaneos y prueba de humo. Las etiquetas publicadas son `latest` y `sha-<commit>`; usa la etiqueta SHA para despliegues reproducibles.
+
+Configura el entorno protegido `production` en GitHub antes de habilitar publicaciones, con revisores requeridos si aplica. El flujo usa `GITHUB_TOKEN` y no requiere credenciales de registro adicionales.
+
+En el servidor de destino, crea un `.env` a partir de `.env.example`, usa secretos reales del gestor de secretos del proveedor y fija una etiqueta publicada:
+
+```bash
+BEATWATCH_IMAGE=ghcr.io/<owner>/beatwatch-backend:sha-<commit>
+docker compose -f docker-compose.production.yml pull
+docker compose -f docker-compose.production.yml up -d
+curl --fail http://localhost:8080/health
+```
+
+MongoDB debe ser un servicio administrado o externo accesible mediante `MongoDbSettings__ConnectionString`; no se despliega una base de datos de prueba junto con producción.
