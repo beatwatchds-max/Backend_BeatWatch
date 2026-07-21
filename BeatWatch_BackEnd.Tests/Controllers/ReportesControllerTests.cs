@@ -65,5 +65,18 @@ namespace BeatWatch_Back_End.Tests.Controllers // ◄ Ubicado correctamente en t
             var actionResult = Assert.IsType<NotFoundObjectResult>(response);
             Assert.Equal(404, actionResult.StatusCode);
         }
+
+        [Fact]
+        public async Task DescargarRecibo_ErrorInesperado_Retorna500()
+        {
+            const string licenciaId = "65f1a2b3c4d5e6f7a8b9c0d1";
+            _mockReporteService.Setup(s => s.GenerarPdfReciboAsync(licenciaId))
+                .ThrowsAsync(new InvalidOperationException("pdf engine failed"));
+
+            var response = await _controller.DescargarRecibo(licenciaId);
+
+            var result = Assert.IsType<ObjectResult>(response);
+            Assert.Equal(500, result.StatusCode);
+        }
     }
 }
