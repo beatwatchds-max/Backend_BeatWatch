@@ -1,0 +1,29 @@
+services:
+  mongo:
+    image: mongo:8.0
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  api:
+    build:
+      context: .
+      dockerfile: BeatWatch_BackEnd/Dockerfile
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      MongoDbSettings__ConnectionString: mongodb://mongo:27017
+      MongoDbSettings__DatabaseName: beatwatch_deployment_test
+      JwtSettings__Issuer: https://api.beatwatch.test
+      JwtSettings__Audience: beatwatch-deployment-test
+      JwtSettings__SigningKey: deployment-test-signing-key-must-be-32-bytes
+      JwtSettings__ExpirationMinutes: "15"
+      RecaptchaSettings__SecretKey: deployment-test-secret
+      EmailSettings__PasswordResetUrl: https://app.beatwatch.test/reset
+    ports:
+      - "8080:8080"

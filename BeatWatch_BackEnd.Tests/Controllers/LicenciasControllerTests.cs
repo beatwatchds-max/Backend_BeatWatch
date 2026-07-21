@@ -69,5 +69,29 @@ namespace BeatWatch_Back_End.Tests.Controllers
             var actionResult = Assert.IsType<BadRequestObjectResult>(response);
             Assert.Equal(400, actionResult.StatusCode);
         }
+
+        [Fact]
+        public async Task ProcesarPagoSimulado_ServicioRetornaNull_Retorna400BadRequest()
+        {
+            var dto = new PagoSimuladoDto { TipoLicencia = "Individual", MetodoPago = "OXXO" };
+            _mockLicenciaService.Setup(s => s.ProcesarPagoYCrearLicenciaAsync(dto)).ReturnsAsync((Licencia?)null);
+
+            var response = await _controller.ProcesarPagoSimulado(dto);
+
+            Assert.IsType<BadRequestObjectResult>(response);
+        }
+
+        [Fact]
+        public async Task ProcesarPagoSimulado_ErrorInesperado_Retorna500()
+        {
+            var dto = new PagoSimuladoDto { TipoLicencia = "Individual", MetodoPago = "OXXO" };
+            _mockLicenciaService.Setup(s => s.ProcesarPagoYCrearLicenciaAsync(dto))
+                .ThrowsAsync(new InvalidOperationException("database unavailable"));
+
+            var response = await _controller.ProcesarPagoSimulado(dto);
+
+            Assert.IsType<ObjectResult>(response);
+            Assert.Equal(500, ((ObjectResult)response).StatusCode);
+        }
     }
 }
