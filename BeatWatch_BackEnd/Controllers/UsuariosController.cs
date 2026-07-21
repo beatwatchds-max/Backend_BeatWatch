@@ -1,5 +1,7 @@
-﻿using BeatWatch_BackEnd.infrescture;
+﻿using BeatWatch_BackEnd.Dtos;
+using BeatWatch_BackEnd.infrescture;
 using BeatWatch_BackEnd.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BeatWatch_BackEnd.Controllers
@@ -30,6 +32,79 @@ namespace BeatWatch_BackEnd.Controllers
             var resultado = await _usuarioService.ObtenerUsuariosPaginadosAsync(page, pageSize, searchName, searchEmail);
 
             return Ok(resultado);
+        }
+
+        [Authorize(Roles = "Administrador,Cuidador")]
+        [HttpPost("perfil")]
+        public async Task<IActionResult> CrearPerfilPaciente([FromServices] PacienteService pacienteService, [FromBody] CrearPerfilPacienteDto perfilDto)
+        {
+            try
+            {
+                var paciente = await pacienteService.CrearPerfilAsync(perfilDto);
+                return StatusCode(StatusCodes.Status201Created, new { pacienteId = paciente.Id });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(new { mensaje = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { mensaje = ex.Message });
+            }
+        }
+
+        [Authorize(Roles = "Administrador")]
+        [HttpDelete("{id}/borrado-logico")]
+        public async Task<IActionResult> BorradoLogico(string id, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var actualizado = await _usuarioService.DesactivarAsync(id, cancellationToken);
+                return actualizado
+                    ? NoContent()
+                    : NotFound(new { mensaje = "Usuario no encontrado." });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { mensaje = ex.Message });
+            }
+        }
+
+        [Authorize(Roles = "Administrador")]
+        [HttpPut("{id}/cuidadores")]
+        public async Task<IActionResult> ActualizarCuidadores(
+            string id,
+            [FromBody] ActualizarCuidadoresDto request,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var actualizado = await _usuarioService.ActualizarCuidadoresAsync(id, request.Cuidadores, cancellationToken);
+                return actualizado
+                    ? NoContent()
+                    : NotFound(new { mensaje = "Usuario no encontrado." });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { mensaje = ex.Message });
+            }
+        }
+
+        [Authorize(Roles = "Administrador")]
+        [HttpDelete("{id}/cuidadores/{cuidadorId}")]
+        public async Task<IActionResult> DesvincularCuidador(string id, string cuidadorId, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var actualizado = await _usuarioService.DesvincularCuidadorAsync(id, cuidadorId, cancellationToken);
+                return actualizado
+                    ? NoContent()
+                    : NotFound(new { mensaje = "Usuario no encontrado." });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { mensaje = ex.Message });
+            }
         }
     }
 }

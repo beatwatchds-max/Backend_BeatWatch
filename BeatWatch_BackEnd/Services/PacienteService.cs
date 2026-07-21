@@ -59,5 +59,45 @@ namespace BeatWatch_BackEnd.Services
 
             return nuevoPaciente;
         }
+
+        public async Task<Paciente> CrearPerfilAsync(CrearPerfilPacienteDto perfilDto)
+        {
+            var curp = perfilDto.CURP.Trim().ToUpperInvariant();
+            var tipoSangre = perfilDto.TipoSangre.Trim().ToUpperInvariant();
+
+            if (await _context.Pacientes.Find(p => p.CURP == curp).AnyAsync())
+            {
+                throw new InvalidOperationException("Ya existe un paciente registrado con esta CURP.");
+            }
+
+            var licencia = await _context.Licencias.Find(l => l.Id == perfilDto.IdLicencia).FirstOrDefaultAsync();
+            if (licencia is null || !licencia.Activa || licencia.FechaFin < DateTime.UtcNow)
+            {
+                throw new ArgumentException("La licencia indicada no existe o no esta activa.");
+            }
+
+            var paciente = new Paciente
+            {
+                CURP = curp,
+                Edad = perfilDto.Edad,
+                Sexo = perfilDto.Sexo.Trim(),
+                Peso = perfilDto.Peso,
+                Estatura = perfilDto.Estatura,
+                TipoSangre = tipoSangre,
+                IdLicencia = perfilDto.IdLicencia,
+                Fotografia = perfilDto.Fotografia
+            };
+
+            try
+            {
+                await _context.Pacientes.InsertOneAsync(paciente);
+            }
+            catch (MongoWriteException ex) when (ex.WriteError.Category == ServerErrorCategory.DuplicateKey)
+            {
+                throw new InvalidOperationException("Ya existe un paciente registrado con esta CURP.", ex);
+            }
+
+            return paciente;
+        }
     }
 }
