@@ -1,4 +1,5 @@
-﻿using BeatWatch_BackEnd.DTOs;
+﻿using BeatWatch_BackEnd.Dtos;
+using BeatWatch_BackEnd.DTOs;
 using BeatWatch_BackEnd.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -25,18 +26,16 @@ namespace BeatWatch_BackEnd.Controllers
                 return BadRequest(new { mensaje = "El token debe tener exactamente 9 dígitos." });
             }
 
-            var tokenJwt = await _authService.ValidarTokenYGenerarJwtAsync(loginDto.Token);
+            // 'respuesta' ya trae el JWT + Nombre + Correo + Telefono + Rol
+            var respuesta = await _authService.ValidarTokenYGenerarJwtAsync(loginDto.Token);
 
-            if (tokenJwt == null)
+            if (respuesta == null)
             {
                 return Unauthorized(new { mensaje = "Token inválido o paciente no encontrado." });
             }
 
-            return Ok(new
-            {
-                mensaje = "Inicio de sesión exitoso.",
-                token = tokenJwt
-            });
+            // Devolvemos el DTO completo con status 200 OK
+            return Ok(respuesta);
         }
     }
 }
