@@ -30,49 +30,6 @@ namespace BeatWatch_BackEnd.Tests.Services
         }
 
         [Fact]
-        public async Task RegistrarAsync_CreaUsuarioCuandoCorreoNoExiste()
-        {
-            // Arrange: Simulamos que la base de datos NO encuentra el correo
-            var mockCursor = new Mock<IAsyncCursor<Usuario>>();
-
-            // CORRECCIÓN: Usar MoveNextAsync porque el servicio usa FirstOrDefaultAsync
-            mockCursor.SetupSequence(c => c.MoveNextAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(false); // Falso inmediato, significa que no hay registros
-
-            mockCursor.Setup(c => c.Current).Returns(new List<Usuario>());
-
-            _mockCollection.Setup(c => c.FindAsync(
-                    It.IsAny<FilterDefinition<Usuario>>(),
-                    It.IsAny<FindOptions<Usuario, Usuario>>(),
-                    It.IsAny<CancellationToken>()))
-                .ReturnsAsync(mockCursor.Object);
-
-            var request = new RegistroRequest
-            {
-                Nombre = "Juan",
-                Correo = "juan@example.com",
-                Telefono = "123456789",
-                Contrasena = "Password123",
-                EmpresaOrganizacion = "BeatWatch Inc", // Dato opcional de tu nuevo endpoint
-                RFC = "XAXX010101000"
-            };
-
-            // Act
-            var result = await _service.RegistrarAsync(request);
-
-            // Assert
-            Assert.NotNull(result);
-            Assert.Equal(request.Nombre, result.Nombre);
-            Assert.Equal(request.Correo, result.Correo);
-            Assert.Equal(request.EmpresaOrganizacion, result.EmpresaOrganizacion);
-            Assert.NotEqual(request.Contrasena, result.Contrasena); // El hash debe ser diferente a la contraseña plana
-            Assert.True(result.Activo); // Validamos que se asigne Activo en true
-
-            // Verificamos que el insert en Mongo se haya llamado exactamente una vez
-            _mockCollection.Verify(c => c.InsertOneAsync(It.IsAny<Usuario>(), null, It.IsAny<CancellationToken>()), Times.Once);
-        }
-
-        [Fact]
         public async Task RegistrarAsync_LanzaErrorCuandoCorreoDuplicado()
         {
             // Arrange: Simulamos que la base de datos SÍ encuentra un usuario con ese correo

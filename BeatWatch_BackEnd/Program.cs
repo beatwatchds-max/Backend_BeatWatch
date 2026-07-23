@@ -94,6 +94,7 @@ builder.Services.AddScoped<PacienteService>();
 builder.Services.AddHostedService<MongoDbInitializer>();
 
 builder.Services.AddControllers();
+builder.Services.AddHealthChecks();
 
 // --- CONFIGURACIÓN DE SWAGGER ---
 builder.Services.AddSwaggerGen(c =>
@@ -152,5 +153,8 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHealthChecks("/health");
 
 app.Run();
+
+public partial class Program;

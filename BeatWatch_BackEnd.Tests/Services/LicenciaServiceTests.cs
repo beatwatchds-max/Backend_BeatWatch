@@ -41,7 +41,11 @@ namespace BeatWatch_BackEnd.Tests.Services
                 UsuarioId = "65f1a2b3c4d5e6f7a8b9c0d1",
                 TipoLicencia = "Grupal",
                 MetodoPago = "Tarjeta",
-                CorreoElectronico = "oscar@test.com"
+                CorreoElectronico = "oscar@test.com",
+                NumeroTarjeta = "4111111111111111",
+                NombreTitular = "Oscar Salinas",
+                FechaExpiracion = "12/30",
+                Cvv = "123"
             };
 
             // Act
@@ -127,6 +131,43 @@ namespace BeatWatch_BackEnd.Tests.Services
             );
 
             Assert.Equal("Tipo de licencia no soportado.", excepcion.Message);
+        }
+
+        [Fact]
+        public async Task ProcesarPagoYCrearLicenciaAsync_CvvInvalido_LanzaArgumentException()
+        {
+            var request = new PagoSimuladoDto
+            {
+                UsuarioId = "65f1a2b3c4d5e6f7a8b9c0d3",
+                TipoLicencia = "Individual",
+                MetodoPago = "Tarjeta",
+                NumeroTarjeta = "4111111111111111",
+                NombreTitular = "User Test",
+                FechaExpiracion = "12/30",
+                Cvv = "12"
+            };
+
+            var exception = await Assert.ThrowsAsync<ArgumentException>(() => _service.ProcesarPagoYCrearLicenciaAsync(request));
+
+            Assert.Equal("El código CVV no es válido (Debe tener 3 o 4 dígitos).", exception.Message);
+            _mockLicenciasCollection.Verify(c => c.InsertOneAsync(It.IsAny<Licencia>(), null, It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task ProcesarPagoYCrearLicenciaAsync_TarjetaIncompleta_LanzaArgumentException()
+        {
+            var request = new PagoSimuladoDto
+            {
+                UsuarioId = "65f1a2b3c4d5e6f7a8b9c0d3",
+                TipoLicencia = "Individual",
+                MetodoPago = "Tarjeta",
+                NumeroTarjeta = "4111111111111111"
+            };
+
+            var exception = await Assert.ThrowsAsync<ArgumentException>(() => _service.ProcesarPagoYCrearLicenciaAsync(request));
+
+            Assert.Equal("Todos los campos de la tarjeta son obligatorios para procesar el pago.", exception.Message);
+            _mockLicenciasCollection.Verify(c => c.InsertOneAsync(It.IsAny<Licencia>(), null, It.IsAny<CancellationToken>()), Times.Never);
         }
     }
 }

@@ -34,7 +34,7 @@ namespace BeatWatch_BackEnd.Controllers
             return Ok(resultado);
         }
 
-        [Authorize(Roles = "Administrador,Cuidador")]
+        [Authorize(Roles = "Administrador,Cuidador, Paciente")]
         [HttpPost("perfil")]
         public async Task<IActionResult> CrearPerfilPaciente([FromServices] PacienteService pacienteService, [FromBody] CrearPerfilPacienteDto perfilDto)
         {

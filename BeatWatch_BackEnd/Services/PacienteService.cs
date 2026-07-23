@@ -47,11 +47,13 @@ namespace BeatWatch_BackEnd.Services
                 Nombre = pacienteDto.NombreCompleto,
                 Correo = pacienteDto.Correo,
                 Telefono = pacienteDto.Telefono,
-               Rol = "Paciente",
-                TokenMovil = nuevoToken, // Guardado seguro en el documento
+                Rol = "Paciente",
+                TokenMovil = nuevoToken,
                 Activo = true,
-                FechaCreacion = DateTime.UtcNow
-                // Nota: Asigna aquí cualquier otro campo obligatorio de tu modelo Usuario
+                FechaCreacion = DateTime.UtcNow,
+
+                // 👈 ASIGNAR LA LICENCIA AQUÍ
+                IdLicencia = pacienteDto.IdLicencia
             };
 
             // 3. Insertar en MongoDB

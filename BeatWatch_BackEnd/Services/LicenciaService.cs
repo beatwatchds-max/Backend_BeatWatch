@@ -73,11 +73,16 @@ namespace BeatWatch_BackEnd.Services
             await _context.Licencias.InsertOneAsync(nuevaLicencia);
 
             // 5. HU2.3: Actualizar el estado del usuario a Activo (si aplica)
+            // 5. HU2.3: Actualizar el estado del usuario a Activo y Vincular el IdLicencia
             if (licenciaActiva)
             {
                 var filter = Builders<Usuario>.Filter.Eq(u => u.Id, pagoDto.UsuarioId);
-                // Usamos la propiedad 'Activo' exacta de tu modelo Usuario
-                var update = Builders<Usuario>.Update.Set(u => u.Activo, true);
+
+                // Asignamos Activo = true Y guardamos la IdLicencia recién generada
+                var update = Builders<Usuario>.Update
+                    .Set(u => u.Activo, true)
+                    .Set(u => u.IdLicencia, nuevaLicencia.Id);
+
                 await _context.Usuarios.UpdateOneAsync(filter, update);
             }
 
