@@ -5,5 +5,6 @@
         public string NombreCompleto { get; set; } = null!;
         public string Correo { get; set; } = null!;
         public string? Telefono { get; set; } // Opcional según la maqueta
+        public string IdLicencia { get; set; } = string.Empty;
     }
 }
