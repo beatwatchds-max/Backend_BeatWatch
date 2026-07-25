@@ -8,6 +8,9 @@ namespace BeatWatch_BackEnd.Models
         [BsonId]
         [BsonRepresentation(BsonType.ObjectId)]
         public string? Id { get; set; }
+        [BsonElement("UsuarioId")]
+        [BsonRepresentation(BsonType.ObjectId)]
+        public string UsuarioId { get; set; } = null!;
 
         [BsonElement("CURP")]
         public string CURP { get; set; } = null!;
