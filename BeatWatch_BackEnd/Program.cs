@@ -89,6 +89,7 @@ builder.Services.AddHttpClient<ICaptchaVerifier, RecaptchaVerifier>(client => cl
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 builder.Services.AddScoped<ILicenciaService, LicenciaService>();
 builder.Services.AddScoped<IReporteService, ReporteService>();
+builder.Services.AddScoped<DispositivoService>();
 builder.Services.AddScoped<AutenticacionService>();
 builder.Services.AddScoped<PacienteService>();
 builder.Services.AddScoped<ISaludService, SaludService>();

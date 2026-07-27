@@ -1,6 +1,7 @@
 ﻿using BeatWatch_BackEnd.Data;
 using BeatWatch_BackEnd.Dtos;
 using BeatWatch_BackEnd.Models;
+using MongoDB.Bson;
 using MongoDB.Driver;
 using System.Security.Cryptography;
 
@@ -47,11 +48,13 @@ namespace BeatWatch_BackEnd.Services
                 Nombre = pacienteDto.NombreCompleto,
                 Correo = pacienteDto.Correo,
                 Telefono = pacienteDto.Telefono,
-               Rol = "Paciente",
-                TokenMovil = nuevoToken, // Guardado seguro en el documento
+                Rol = "Paciente",
+                TokenMovil = nuevoToken,
                 Activo = true,
-                FechaCreacion = DateTime.UtcNow
-                // Nota: Asigna aquí cualquier otro campo obligatorio de tu modelo Usuario
+                FechaCreacion = DateTime.UtcNow,
+
+                // 👈 ASIGNAR LA LICENCIA AQUÍ
+                IdLicencia = pacienteDto.IdLicencia
             };
 
             // 3. Insertar en MongoDB
@@ -65,6 +68,18 @@ namespace BeatWatch_BackEnd.Services
             var curp = perfilDto.CURP.Trim().ToUpperInvariant();
             var tipoSangre = perfilDto.TipoSangre.Trim().ToUpperInvariant();
 
+            // Validar que el Usuario exista
+            if (!ObjectId.TryParse(perfilDto.UsuarioId, out _))
+            {
+                throw new ArgumentException("El UsuarioId no tiene un formato de ObjectId válido.");
+            }
+
+            var usuarioExiste = await _context.Usuarios.Find(u => u.Id == perfilDto.UsuarioId).AnyAsync();
+            if (!usuarioExiste)
+            {
+                throw new ArgumentException("El usuario especificado no existe.");
+            }
+
             if (await _context.Pacientes.Find(p => p.CURP == curp).AnyAsync())
             {
                 throw new InvalidOperationException("Ya existe un paciente registrado con esta CURP.");
@@ -73,11 +88,12 @@ namespace BeatWatch_BackEnd.Services
             var licencia = await _context.Licencias.Find(l => l.Id == perfilDto.IdLicencia).FirstOrDefaultAsync();
             if (licencia is null || !licencia.Activa || licencia.FechaFin < DateTime.UtcNow)
             {
-                throw new ArgumentException("La licencia indicada no existe o no esta activa.");
+                throw new ArgumentException("La licencia indicada no existe o no está activa.");
             }
 
             var paciente = new Paciente
             {
+                UsuarioId = perfilDto.UsuarioId, // 🟢 Asignamos la relación
                 CURP = curp,
                 Edad = perfilDto.Edad,
                 Sexo = perfilDto.Sexo.Trim(),

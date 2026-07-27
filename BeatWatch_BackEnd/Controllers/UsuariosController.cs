@@ -34,24 +34,6 @@ namespace BeatWatch_BackEnd.Controllers
             return Ok(resultado);
         }
 
-        [Authorize(Roles = "Administrador,Cuidador, Paciente")]
-        [HttpPost("perfil")]
-        public async Task<IActionResult> CrearPerfilPaciente([FromServices] PacienteService pacienteService, [FromBody] CrearPerfilPacienteDto perfilDto)
-        {
-            try
-            {
-                var paciente = await pacienteService.CrearPerfilAsync(perfilDto);
-                return StatusCode(StatusCodes.Status201Created, new { pacienteId = paciente.Id });
-            }
-            catch (InvalidOperationException ex)
-            {
-                return Conflict(new { mensaje = ex.Message });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new { mensaje = ex.Message });
-            }
-        }
 
         [Authorize(Roles = "Administrador")]
         [HttpDelete("{id}/borrado-logico")]

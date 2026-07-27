@@ -4,6 +4,10 @@ namespace BeatWatch_BackEnd.Dtos
 {
     public class CrearPerfilPacienteDto
     {
+        [Required(ErrorMessage = "El UsuarioId es obligatorio.")]
+        [RegularExpression(@"^[a-fA-F0-9]{24}$", ErrorMessage = "UsuarioId debe ser un ObjectId de MongoDB válido.")]
+        public string UsuarioId { get; set; } = null!;
+
         [Required]
         [RegularExpression(@"^[A-Za-zÑñ]{4}\d{6}[HhMm][A-Za-zÑñ]{5}[A-Za-z0-9]\d$", ErrorMessage = "La CURP no tiene un formato valido.")]
         public string CURP { get; set; } = null!;

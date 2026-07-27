@@ -45,5 +45,9 @@ namespace BeatWatch_BackEnd.Models
         [BsonElement("FechaCreacion")]
         [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
         public DateTime FechaCreacion { get; set; }
+
+        [BsonElement("IdLicencia")]
+        [BsonRepresentation(BsonType.ObjectId)]
+        public string? IdLicencia { get; set; }
     }
 }
