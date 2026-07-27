@@ -10,6 +10,39 @@ namespace BeatWatch_BackEnd.Tests.Services;
 public class SaludServiceTests
 {
     [Fact]
+    public async Task ObtenerHistorialArritmiasAsync_FiltraPorPacienteYOrdenaPorFechaDescendente()
+    {
+        const string idPaciente = "65f1a2b3c4d5e6f7a8b9c0d1";
+        var arritmias = new List<Arritmia>
+        {
+            new() { IdPaciente = idPaciente, Fecha = DateTime.UtcNow },
+            new() { IdPaciente = idPaciente, Fecha = DateTime.UtcNow.AddMinutes(-1) }
+        };
+        var cursor = new Mock<IAsyncCursor<Arritmia>>();
+        cursor.SetupSequence(c => c.MoveNextAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true)
+            .ReturnsAsync(false);
+        cursor.Setup(c => c.Current).Returns(arritmias);
+        var coleccion = new Mock<IMongoCollection<Arritmia>>();
+        coleccion.Setup(c => c.FindAsync(
+                It.IsAny<FilterDefinition<Arritmia>>(),
+                It.IsAny<FindOptions<Arritmia, Arritmia>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(cursor.Object);
+        var contexto = new Mock<MongoDbContext>();
+        contexto.SetupGet(c => c.Arritmias).Returns(coleccion.Object);
+        var servicio = new SaludService(contexto.Object);
+
+        var resultado = await servicio.ObtenerHistorialArritmiasAsync(idPaciente, CancellationToken.None);
+
+        Assert.Equal(arritmias, resultado);
+        coleccion.Verify(c => c.FindAsync(
+            It.IsAny<FilterDefinition<Arritmia>>(),
+            It.Is<FindOptions<Arritmia, Arritmia>>(options => options.Sort != null),
+            CancellationToken.None), Times.Once);
+    }
+
+    [Fact]
     public async Task RegistrarArritmiaAsync_MapeaLecturaYSintomasEnUnaInsercionUtc()
     {
         Arritmia? insertada = null;
