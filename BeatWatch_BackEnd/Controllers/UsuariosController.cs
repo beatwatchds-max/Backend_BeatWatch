@@ -19,19 +19,26 @@ namespace BeatWatch_BackEnd.Controllers
 
         [HttpGet]
         public async Task<IActionResult> ObtenerUsuarios(
-            [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 10,
-            [FromQuery] string? searchName = null,
-            [FromQuery] string? searchEmail = null)
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
+        [FromQuery] string? searchName = null,
+        [FromQuery] string? searchEmail = null,
+        [FromQuery] string? idLicencia = null) // 👈 Nuevo parámetro Query
         {
             // Validaciones básicas de seguridad para la paginación
             if (page < 1) page = 1;
             if (pageSize < 1) pageSize = 10;
-            if (pageSize > 100) pageSize = 100; // Evitamos que pidan demasiados datos de golpe
+            if (pageSize > 100) pageSize = 100;
 
-            var resultado = await _usuarioService.ObtenerUsuariosPaginadosAsync(page, pageSize, searchName, searchEmail);
-
-            return Ok(resultado);
+            try
+            {
+                var resultado = await _usuarioService.ObtenerUsuariosPaginadosAsync(page, pageSize, searchName, searchEmail, idLicencia);
+                return Ok(resultado);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { mensaje = ex.Message });
+            }
         }
 
 

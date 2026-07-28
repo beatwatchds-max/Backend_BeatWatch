@@ -12,7 +12,9 @@ namespace BeatWatch_BackEnd.Models
         [BsonElement("UsuarioId")]
         [BsonRepresentation(BsonType.ObjectId)]
         public string UsuarioId { get; set; } = null!;
-
+        [BsonElement("UsuariosAsociados")]
+        [BsonRepresentation(BsonType.ObjectId)]
+        public List<string> UsuariosAsociados { get; set; } = new List<string>();
         [BsonElement("Tipo")]
         public string Tipo { get; set; } = null!;
 

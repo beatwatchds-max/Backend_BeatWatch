@@ -92,6 +92,7 @@ builder.Services.AddScoped<IReporteService, ReporteService>();
 builder.Services.AddScoped<DispositivoService>();
 builder.Services.AddScoped<AutenticacionService>();
 builder.Services.AddScoped<PacienteService>();
+builder.Services.AddScoped<ISaludService, SaludService>();
 builder.Services.AddHostedService<MongoDbInitializer>();
 
 builder.Services.AddControllers();

@@ -39,10 +39,28 @@ namespace BeatWatch_BackEnd.Services
 
         public async Task<Usuario> RegistrarPacienteAsync(CrearPacienteDto pacienteDto)
         {
-            // 1. Generar el token de 9 dígitos
+            // 1. Validar que la licencia exista antes de asociar
+            if (!string.IsNullOrWhiteSpace(pacienteDto.IdLicencia))
+            {
+                if (!ObjectId.TryParse(pacienteDto.IdLicencia, out _))
+                {
+                    throw new ArgumentException("El IdLicencia proporcionado no tiene un formato válido.");
+                }
+
+                var licenciaExiste = await _context.Licencias
+                    .Find(l => l.Id == pacienteDto.IdLicencia && l.Activa)
+                    .AnyAsync();
+
+                if (!licenciaExiste)
+                {
+                    throw new ArgumentException("La licencia especificada no existe o no se encuentra activa.");
+                }
+            }
+
+            // 2. Generar el token de 9 dígitos
             string nuevoToken = await GenerarTokenNumericoUnicoAsync();
 
-            // 2. Crear el objeto del nuevo paciente
+            // 3. Crear el objeto del nuevo paciente (sin guardar IdLicencia en el usuario)
             var nuevoPaciente = new Usuario
             {
                 Nombre = pacienteDto.NombreCompleto,
@@ -51,14 +69,20 @@ namespace BeatWatch_BackEnd.Services
                 Rol = "Paciente",
                 TokenMovil = nuevoToken,
                 Activo = true,
-                FechaCreacion = DateTime.UtcNow,
-
-                // 👈 ASIGNAR LA LICENCIA AQUÍ
-                IdLicencia = pacienteDto.IdLicencia
+                FechaCreacion = DateTime.UtcNow
             };
 
-            // 3. Insertar en MongoDB
+            // 4. Insertar el Usuario en MongoDB
             await _context.Usuarios.InsertOneAsync(nuevoPaciente);
+
+            // 🟢 5. Vincular el ID del usuario recién creado a la Licencia (Lista de UsuariosAsociados)
+            if (!string.IsNullOrWhiteSpace(pacienteDto.IdLicencia))
+            {
+                var filterLicencia = Builders<Licencia>.Filter.Eq(l => l.Id, pacienteDto.IdLicencia);
+                var updateLicencia = Builders<Licencia>.Update.Push(l => l.UsuariosAsociados, nuevoPaciente.Id);
+
+                await _context.Licencias.UpdateOneAsync(filterLicencia, updateLicencia);
+            }
 
             return nuevoPaciente;
         }
