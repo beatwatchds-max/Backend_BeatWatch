@@ -125,7 +125,9 @@ namespace BeatWatch_BackEnd.Services
                 Estatura = perfilDto.Estatura,
                 TipoSangre = tipoSangre,
                 IdLicencia = perfilDto.IdLicencia,
-                Fotografia = perfilDto.Fotografia
+                Fotografia = perfilDto.Fotografia,
+                FechaNacimiento = perfilDto.FechaNacimiento,
+                Direccion = perfilDto.Direccion
             };
 
             try

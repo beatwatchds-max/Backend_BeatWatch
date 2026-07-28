@@ -29,6 +29,10 @@ namespace BeatWatch_BackEnd.Models
 
         [BsonElement("TipoSangre")]
         public string TipoSangre { get; set; } = null!;
+        [BsonElement("FechaNacimiento")]
+        public DateTime FechaNacimiento { get; set; }
+        [BsonElement("Direccion")]
+        public string Direccion { get; set; } = null!;
 
         [BsonElement("IdLicencia")]
         [BsonRepresentation(BsonType.ObjectId)]

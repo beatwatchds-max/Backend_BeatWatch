@@ -33,10 +33,12 @@ namespace BeatWatch_BackEnd.Services
             // Buscamos si existe una licencia donde el UsuarioId coincida con este usuario
             // (o si guardas el ID en la licencia de alguna forma)
             var licencia = await _context.Licencias
-                .Find(l => l.UsuarioId == usuario.Id && l.Activa == true)
-                .FirstOrDefaultAsync();
+    .Find(l => l.Activa == true && (l.UsuarioId == usuario.Id || l.UsuariosAsociados.Contains(usuario.Id)))
+    .FirstOrDefaultAsync();
 
             string idLicenciaEncontrada = licencia?.Id ?? string.Empty;
+
+         
             // ----------------------------------------
 
             // Generar JWT
