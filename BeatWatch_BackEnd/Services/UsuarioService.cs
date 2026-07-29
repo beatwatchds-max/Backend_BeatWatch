@@ -138,13 +138,57 @@ public class UsuarioService : IUsuarioService
 
     private static string HashToken(string token) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
 
-    public async Task<ResultadoPaginado<Usuario>> ObtenerUsuariosPaginadosAsync(int page, int pageSize, string? searchName, string? searchEmail)
+    public async Task<ResultadoPaginado<Usuario>> ObtenerUsuariosPaginadosAsync(
+      int page,
+      int pageSize,
+      string? searchName,
+      string? searchEmail,
+      string? idLicencia)
     {
-        // 1. Inicializar el constructor de filtros
         var builder = Builders<Usuario>.Filter;
-        var filtro = builder.Empty; // Por defecto, trae todo
+        var filtro = builder.Empty;
 
-        // 2. Aplicar filtros si el administrador envió parámetros
+        // 🟢 1. Si enviaron un idLicencia, resolvemos quiénes pertenecen a esa Licencia
+        if (!string.IsNullOrWhiteSpace(idLicencia))
+        {
+            if (!ObjectId.TryParse(idLicencia, out _))
+            {
+                throw new ArgumentException("El idLicencia proporcionado no tiene un formato válido.");
+            }
+
+            var licencia = await _context.Licencias
+                .Find(l => l.Id == idLicencia)
+                .FirstOrDefaultAsync();
+
+            if (licencia is null)
+            {
+                return new ResultadoPaginado<Usuario>
+                {
+                    TotalRegistros = 0,
+                    PaginaActual = page,
+                    TotalPaginas = 0,
+                    Datos = new List<Usuario>()
+                };
+            }
+
+            // Construir lista con el Titular (UsuarioId) + los UsuariosAsociados
+            var miembrosLicencia = new List<string>();
+
+            if (!string.IsNullOrEmpty(licencia.UsuarioId))
+            {
+                miembrosLicencia.Add(licencia.UsuarioId);
+            }
+
+            if (licencia.UsuariosAsociados != null && licencia.UsuariosAsociados.Any())
+            {
+                miembrosLicencia.AddRange(licencia.UsuariosAsociados);
+            }
+
+            // Filtrar todos los usuarios cuyo _id esté en la lista
+            filtro &= builder.In(u => u.Id, miembrosLicencia);
+        }
+
+        // 2. Filtros adicionales de búsqueda
         if (!string.IsNullOrWhiteSpace(searchName))
         {
             filtro &= builder.Regex(u => u.Nombre, new BsonRegularExpression(searchName, "i"));
@@ -152,25 +196,18 @@ public class UsuarioService : IUsuarioService
 
         if (!string.IsNullOrWhiteSpace(searchEmail))
         {
-            // Corregido: Usamos u.Correo según tu modelo
             filtro &= builder.Regex(u => u.Correo, new BsonRegularExpression(searchEmail, "i"));
         }
 
-        // 3. Contar el total de documentos que coinciden con el filtro
-        // Corregido: Usamos _context.Usuarios
+        // 3. Paginación
         var totalRegistros = await _context.Usuarios.CountDocumentsAsync(filtro);
-
-        // 4. Calcular el salto (Skip)
         var saltar = (page - 1) * pageSize;
 
-        // 5. Ejecutar la consulta con Skip y Limit
-        // Corregido: Usamos _context.Usuarios
         var usuarios = await _context.Usuarios.Find(filtro)
                                               .Skip(saltar)
                                               .Limit(pageSize)
                                               .ToListAsync();
 
-        // 6. Retornar el objeto paginado
         return new ResultadoPaginado<Usuario>
         {
             TotalRegistros = totalRegistros,
@@ -179,7 +216,6 @@ public class UsuarioService : IUsuarioService
             Datos = usuarios
         };
     }
-
     public async Task<bool> DesactivarAsync(string id, CancellationToken cancellationToken = default)
     {
         var usuarioId = ValidarObjectId(id, nameof(id));

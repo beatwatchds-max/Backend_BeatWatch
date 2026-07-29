@@ -24,6 +24,8 @@ namespace BeatWatch_BackEnd.Dtos
 
         [Range(0.1, 300)]
         public double Estatura { get; set; }
+        public DateTime FechaNacimiento { get; set; }
+        public string Direccion { get; set; } = null!;
 
         [Required]
         [RegularExpression(@"^(A|B|AB|O)[+-]$", ErrorMessage = "El tipo de sangre debe ser A+, A-, B+, B-, AB+, AB-, O+ u O-.")]
