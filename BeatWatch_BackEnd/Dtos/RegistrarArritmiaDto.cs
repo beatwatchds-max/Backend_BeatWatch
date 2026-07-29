@@ -20,6 +20,8 @@ public class RegistrarArritmiaDto
 
     [Required]
     public SintomasDto Sintomas { get; set; } = null!;
+    [Required]
+    public FactoresRiesgoDto FactoresRiesgo { get; set; } = null!;
 }
 
 public class SintomasDto
@@ -30,4 +32,13 @@ public class SintomasDto
     public bool Desmayo { get; set; }
     public bool FaltaAire { get; set; }
     public bool Fatiga { get; set; }
+}
+public class FactoresRiesgoDto
+{
+    public bool HipertensionArterial { get; set; }
+    public bool ObesidadImcElevado { get; set; }
+    public bool ApneaSueno { get; set; }
+    public bool Tabaquismo { get; set; }
+    public bool Alcoholismo { get; set; }
+    public bool EstresCronico { get; set; }
 }

@@ -32,10 +32,20 @@ public class SaludService : ISaludService
                 FaltaAire = solicitud.Sintomas.FaltaAire,
                 Fatiga = solicitud.Sintomas.Fatiga
             },
+            // 🟢 NUEVO: Mapeo de Factores de Riesgo al crear la entidad
+            FactoresRiesgo = new FactoresRiesgo
+            {
+                HipertensionArterial = solicitud.FactoresRiesgo.HipertensionArterial,
+                ObesidadImcElevado = solicitud.FactoresRiesgo.ObesidadImcElevado,
+                ApneaSueno = solicitud.FactoresRiesgo.ApneaSueno,
+                Tabaquismo = solicitud.FactoresRiesgo.Tabaquismo,
+                Alcoholismo = solicitud.FactoresRiesgo.Alcoholismo,
+                EstresCronico = solicitud.FactoresRiesgo.EstresCronico
+            },
             Fecha = DateTime.UtcNow
         };
 
-        // A single MongoDB insert persists the reading and its symptom subdocument atomically.
+        // Continúa haciendo la inserción atómica en un solo documento
         await _context.Arritmias.InsertOneAsync(arritmia, cancellationToken: cancellationToken);
         return arritmia;
     }
