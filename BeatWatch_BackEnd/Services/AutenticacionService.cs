@@ -29,30 +29,43 @@ namespace BeatWatch_BackEnd.Services
 
             if (usuario == null) return null;
 
-            // --- BÚSQUEDA DINÁMICA DE LA LICENCIA ---
+            // Búsqueda de la licencia asociada
             var licencia = await _context.Licencias
                 .Find(l => l.Activa == true && (l.UsuarioId == usuario.Id || l.UsuariosAsociados.Contains(usuario.Id)))
                 .FirstOrDefaultAsync();
 
             string idLicenciaEncontrada = licencia?.Id ?? string.Empty;
 
-            // 🟢 VERIFICAR SI EL PACIENTE YA TIENE PERFIL CREADO
-            var paciente = await _context.Pacientes
-                .Find(p => p.UsuarioId == usuario.Id)
-                .FirstOrDefaultAsync();
+            // Evaluamos el rol
+            bool esPaciente = usuario.Rol.Equals("Paciente", StringComparison.OrdinalIgnoreCase);
 
-            bool perfilCompletado = paciente != null;
-            bool diagnosticoCompletado = false;
+            bool perfilCompletado = true;      // Por defecto true para Admin/Cuidador
+            bool diagnosticoCompletado = true; // Por defecto true para Admin/Cuidador
+            string? pacienteId = null;
 
-            if (perfilCompletado)
+            // SOLO si es Paciente evaluamos sus colecciones clínicas
+            if (esPaciente)
             {
-                // 🟢 VERIFICAR SI YA TIENE SU ARRITMIA/DIAGNÓSTICO REGISTRADO
-                diagnosticoCompletado = await _context.Arritmias
-                    .Find(a => a.IdPaciente == paciente!.Id)
-                    .AnyAsync();
+                var paciente = await _context.Pacientes
+                    .Find(p => p.UsuarioId == usuario.Id)
+                    .FirstOrDefaultAsync();
+
+                perfilCompletado = paciente != null;
+                pacienteId = paciente?.Id;
+
+                if (perfilCompletado)
+                {
+                    diagnosticoCompletado = await _context.Arritmias
+                        .Find(a => a.IdPaciente == paciente!.Id)
+                        .AnyAsync();
+                }
+                else
+                {
+                    diagnosticoCompletado = false;
+                }
             }
 
-            // Generar JWT
+            // Generación del Token JWT...
             var jwtKey = _config["JwtSettings:SigningKey"];
             var keyBytes = Encoding.UTF8.GetBytes(jwtKey!);
             var creds = new SigningCredentials(new SymmetricSecurityKey(keyBytes), SecurityAlgorithms.HmacSha256);
@@ -75,22 +88,20 @@ namespace BeatWatch_BackEnd.Services
 
             var tokenJwtString = new JwtSecurityTokenHandler().WriteToken(tokenObject);
 
-            bool esPaciente = usuario.Rol.Equals("Paciente", StringComparison.OrdinalIgnoreCase);
-
             return new LoginMovilResponseDto
             {
                 TokenJwt = tokenJwtString,
                 UsuarioId = usuario.Id,
                 Rol = usuario.Rol,
-                Nombre = esPaciente ? usuario.Nombre : string.Empty,
-                Correo = esPaciente ? usuario.Correo : string.Empty,
-                Telefono = esPaciente ? usuario.Telefono : string.Empty,
+                Nombre = usuario.Nombre,
+                Correo = usuario.Correo ?? string.Empty,
+                Telefono = usuario.Telefono ?? string.Empty,
                 IdLicencia = !string.IsNullOrEmpty(usuario.IdLicencia) ? usuario.IdLicencia : idLicenciaEncontrada,
 
-                // 🟢 BANDERAS DE NAVEGACIÓN
+                // Banderas dinámicas
                 PerfilCompletado = perfilCompletado,
                 DiagnosticoCompletado = diagnosticoCompletado,
-                PacienteId = paciente?.Id
+                PacienteId = pacienteId
             };
         }
     }
