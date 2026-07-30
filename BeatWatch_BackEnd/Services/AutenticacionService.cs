@@ -30,16 +30,27 @@ namespace BeatWatch_BackEnd.Services
             if (usuario == null) return null;
 
             // --- BÚSQUEDA DINÁMICA DE LA LICENCIA ---
-            // Buscamos si existe una licencia donde el UsuarioId coincida con este usuario
-            // (o si guardas el ID en la licencia de alguna forma)
             var licencia = await _context.Licencias
-    .Find(l => l.Activa == true && (l.UsuarioId == usuario.Id || l.UsuariosAsociados.Contains(usuario.Id)))
-    .FirstOrDefaultAsync();
+                .Find(l => l.Activa == true && (l.UsuarioId == usuario.Id || l.UsuariosAsociados.Contains(usuario.Id)))
+                .FirstOrDefaultAsync();
 
             string idLicenciaEncontrada = licencia?.Id ?? string.Empty;
 
-         
-            // ----------------------------------------
+            // 🟢 VERIFICAR SI EL PACIENTE YA TIENE PERFIL CREADO
+            var paciente = await _context.Pacientes
+                .Find(p => p.UsuarioId == usuario.Id)
+                .FirstOrDefaultAsync();
+
+            bool perfilCompletado = paciente != null;
+            bool diagnosticoCompletado = false;
+
+            if (perfilCompletado)
+            {
+                // 🟢 VERIFICAR SI YA TIENE SU ARRITMIA/DIAGNÓSTICO REGISTRADO
+                diagnosticoCompletado = await _context.Arritmias
+                    .Find(a => a.IdPaciente == paciente!.Id)
+                    .AnyAsync();
+            }
 
             // Generar JWT
             var jwtKey = _config["JwtSettings:SigningKey"];
@@ -74,13 +85,13 @@ namespace BeatWatch_BackEnd.Services
                 Nombre = esPaciente ? usuario.Nombre : string.Empty,
                 Correo = esPaciente ? usuario.Correo : string.Empty,
                 Telefono = esPaciente ? usuario.Telefono : string.Empty,
+                IdLicencia = !string.IsNullOrEmpty(usuario.IdLicencia) ? usuario.IdLicencia : idLicenciaEncontrada,
 
-                // Asignamos el ID obtenido de la colección Licencias (o usuario.IdLicencia si viniera en el usuario)
-                IdLicencia = !string.IsNullOrEmpty(usuario.IdLicencia)
-                    ? usuario.IdLicencia
-                    : idLicenciaEncontrada
+                // 🟢 BANDERAS DE NAVEGACIÓN
+                PerfilCompletado = perfilCompletado,
+                DiagnosticoCompletado = diagnosticoCompletado,
+                PacienteId = paciente?.Id
             };
-        
-         }
+        }
     }
 }

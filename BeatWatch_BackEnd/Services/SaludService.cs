@@ -57,4 +57,19 @@ public class SaludService : ISaludService
             .Sort(Builders<Arritmia>.Sort.Descending(arritmia => arritmia.Fecha))
             .ToListAsync(cancellationToken);
     }
+    public async Task<EpisodioArritmia> RegistrarAlertaFrecuenciaAsync(RegistrarAlertaFrecuenciaDto solicitud, CancellationToken cancellationToken)
+    {
+        var episodio = new EpisodioArritmia
+        {
+            IdPaciente = solicitud.IdPaciente,
+            TipoAnomalia = solicitud.TipoAnomalia,
+            FrecuenciaCardiaca = solicitud.FrecuenciaCardiaca,
+            DuracionEpisodioSeconds = solicitud.DuracionEpisodioSeconds,
+            EsAlertaCritica = true,
+            Fecha = DateTime.UtcNow
+        };
+
+        await _context.EpisodiosArritmia.InsertOneAsync(episodio, cancellationToken: cancellationToken);
+        return episodio;
+    }
 }

@@ -2,6 +2,7 @@
 using BeatWatch_BackEnd.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace BeatWatch_BackEnd.Controllers
 {
@@ -55,6 +56,42 @@ namespace BeatWatch_BackEnd.Controllers
             {
                 return BadRequest(new { mensaje = ex.Message });
             }
+        }
+        [HttpGet("usuario/{usuarioId}")]
+        [Authorize]
+        public async Task<IActionResult> ObtenerPerfilPorUsuarioId(string usuarioId)
+        {
+            // Extraer el UsuarioId del Token JWT cargado en los Claims
+            var usuarioIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            // Validar seguridad: Solo el propio usuario (o un admin) puede consultar su perfil
+            if (usuarioIdClaim != usuarioId && !User.IsInRole("Admin") && !User.IsInRole("Cuidador"))
+            {
+                return Forbid(); // 403 Forbidden si intenta acceder a datos de otro usuario
+            }
+
+            var paciente = await _pacienteService.ObtenerPorUsuarioIdAsync(usuarioId);
+
+            if (paciente == null)
+            {
+                return NotFound(new { mensaje = "El perfil del paciente aún no ha sido registrado." });
+            }
+
+            return Ok(new
+            {
+                pacienteId = paciente.Id,
+                usuarioId = paciente.UsuarioId,
+                curp = paciente.CURP,
+                edad = paciente.Edad,
+                sexo = paciente.Sexo,
+                peso = paciente.Peso,
+                estatura = paciente.Estatura,
+                fechaNacimiento = paciente.FechaNacimiento,
+                direccion = paciente.Direccion,
+                tipoSangre = paciente.TipoSangre,
+                idLicencia = paciente.IdLicencia,
+                fotografia = paciente.Fotografia
+            });
         }
     }
 }

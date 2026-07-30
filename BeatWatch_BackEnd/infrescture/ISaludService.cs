@@ -7,4 +7,5 @@ public interface ISaludService
 {
     Task<Arritmia> RegistrarArritmiaAsync(RegistrarArritmiaDto solicitud, CancellationToken cancellationToken);
     Task<IReadOnlyList<Arritmia>> ObtenerHistorialArritmiasAsync(string idPaciente, CancellationToken cancellationToken);
+    Task<EpisodioArritmia> RegistrarAlertaFrecuenciaAsync(RegistrarAlertaFrecuenciaDto solicitud, CancellationToken cancellationToken);
 }

@@ -24,5 +24,6 @@ namespace BeatWatch_BackEnd.Data
         public virtual IMongoCollection<Paciente> Pacientes => _database.GetCollection<Paciente>("Pacientes");
         public virtual IMongoCollection<Arritmia> Arritmias => _database.GetCollection<Arritmia>("Arritmias");
         public virtual IMongoCollection<Dispositivo> Dispositivos => _database.GetCollection<Dispositivo>("Dispositivos");
+        public virtual IMongoCollection<EpisodioArritmia> EpisodiosArritmia =>_database.GetCollection<EpisodioArritmia>("EpisodiosArritmia");
     }
 }
