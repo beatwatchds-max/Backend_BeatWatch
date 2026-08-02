@@ -38,4 +38,16 @@ public class SaludController : ControllerBase
         await _saludService.RegistrarAlertaFrecuenciaAsync(solicitud, cancellationToken);
         return StatusCode(StatusCodes.Status201Created);
     }
+
+    /// <summary>
+    /// HU6.2: Sincronización Diaria de Actividad Física y Sueño desde la App Móvil/Wearable
+    /// </summary>
+    [HttpPost("actividad")]
+    public async Task<IActionResult> RegistrarActividadDiaria(
+        [FromBody] RegistrarActividadDiariaDto solicitud,
+        CancellationToken cancellationToken)
+    {
+        await _saludService.RegistrarActividadDiariaAsync(solicitud, cancellationToken);
+        return StatusCode(StatusCodes.Status201Created, new { mensaje = "Actividad diaria registrada con éxito." });
+    }
 }
