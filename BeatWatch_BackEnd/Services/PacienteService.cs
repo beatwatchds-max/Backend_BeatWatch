@@ -142,5 +142,12 @@ namespace BeatWatch_BackEnd.Services
 
             return paciente;
         }
+
+        public async Task<Paciente?> ObtenerPorUsuarioIdAsync(string usuarioId)
+        {
+            return await _context.Pacientes
+                .Find(p => p.UsuarioId == usuarioId)
+                .FirstOrDefaultAsync();
+        }
     }
 }

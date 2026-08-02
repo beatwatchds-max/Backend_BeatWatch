@@ -11,5 +11,9 @@
 
         public string? IdLicencia { get; set; }
 
+        public bool PerfilCompletado { get; set; }
+        public bool DiagnosticoCompletado { get; set; }
+        public string? PacienteId { get; set; }
+
     }
 }

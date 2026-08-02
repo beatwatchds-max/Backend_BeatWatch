@@ -29,19 +29,43 @@ namespace BeatWatch_BackEnd.Services
 
             if (usuario == null) return null;
 
-            // --- BÚSQUEDA DINÁMICA DE LA LICENCIA ---
-            // Buscamos si existe una licencia donde el UsuarioId coincida con este usuario
-            // (o si guardas el ID en la licencia de alguna forma)
+            // Búsqueda de la licencia asociada
             var licencia = await _context.Licencias
-    .Find(l => l.Activa == true && (l.UsuarioId == usuario.Id || l.UsuariosAsociados.Contains(usuario.Id)))
-    .FirstOrDefaultAsync();
+                .Find(l => l.Activa == true && (l.UsuarioId == usuario.Id || l.UsuariosAsociados.Contains(usuario.Id)))
+                .FirstOrDefaultAsync();
 
             string idLicenciaEncontrada = licencia?.Id ?? string.Empty;
 
-         
-            // ----------------------------------------
+            // Evaluamos el rol
+            bool esPaciente = usuario.Rol.Equals("Paciente", StringComparison.OrdinalIgnoreCase);
 
-            // Generar JWT
+            bool perfilCompletado = true;      // Por defecto true para Admin/Cuidador
+            bool diagnosticoCompletado = true; // Por defecto true para Admin/Cuidador
+            string? pacienteId = null;
+
+            // SOLO si es Paciente evaluamos sus colecciones clínicas
+            if (esPaciente)
+            {
+                var paciente = await _context.Pacientes
+                    .Find(p => p.UsuarioId == usuario.Id)
+                    .FirstOrDefaultAsync();
+
+                perfilCompletado = paciente != null;
+                pacienteId = paciente?.Id;
+
+                if (perfilCompletado)
+                {
+                    diagnosticoCompletado = await _context.Arritmias
+                        .Find(a => a.IdPaciente == paciente!.Id)
+                        .AnyAsync();
+                }
+                else
+                {
+                    diagnosticoCompletado = false;
+                }
+            }
+
+            // Generación del Token JWT...
             var jwtKey = _config["JwtSettings:SigningKey"];
             var keyBytes = Encoding.UTF8.GetBytes(jwtKey!);
             var creds = new SigningCredentials(new SymmetricSecurityKey(keyBytes), SecurityAlgorithms.HmacSha256);
@@ -64,23 +88,21 @@ namespace BeatWatch_BackEnd.Services
 
             var tokenJwtString = new JwtSecurityTokenHandler().WriteToken(tokenObject);
 
-            bool esPaciente = usuario.Rol.Equals("Paciente", StringComparison.OrdinalIgnoreCase);
-
             return new LoginMovilResponseDto
             {
                 TokenJwt = tokenJwtString,
                 UsuarioId = usuario.Id,
                 Rol = usuario.Rol,
-                Nombre = esPaciente ? usuario.Nombre : string.Empty,
-                Correo = esPaciente ? usuario.Correo : string.Empty,
-                Telefono = esPaciente ? usuario.Telefono : string.Empty,
+                Nombre = usuario.Nombre,
+                Correo = usuario.Correo ?? string.Empty,
+                Telefono = usuario.Telefono ?? string.Empty,
+                IdLicencia = !string.IsNullOrEmpty(usuario.IdLicencia) ? usuario.IdLicencia : idLicenciaEncontrada,
 
-                // Asignamos el ID obtenido de la colección Licencias (o usuario.IdLicencia si viniera en el usuario)
-                IdLicencia = !string.IsNullOrEmpty(usuario.IdLicencia)
-                    ? usuario.IdLicencia
-                    : idLicenciaEncontrada
+                // Banderas dinámicas
+                PerfilCompletado = perfilCompletado,
+                DiagnosticoCompletado = diagnosticoCompletado,
+                PacienteId = pacienteId
             };
-        
-         }
+        }
     }
 }
