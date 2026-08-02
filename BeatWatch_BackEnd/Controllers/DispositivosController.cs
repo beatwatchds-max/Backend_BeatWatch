@@ -1,4 +1,5 @@
 ﻿using BeatWatch_BackEnd.Dtos;
+using BeatWatch_BackEnd.infrescture;
 using BeatWatch_BackEnd.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -10,9 +11,9 @@ namespace BeatWatch_BackEnd.Controllers
     [Authorize]
     public class DispositivosController : ControllerBase
     {
-        private readonly DispositivoService _dispositivoService;
+        private readonly IDispositivoService _dispositivoService;
 
-        public DispositivosController(DispositivoService dispositivoService)
+        public DispositivosController(IDispositivoService dispositivoService)
         {
             _dispositivoService = dispositivoService;
         }

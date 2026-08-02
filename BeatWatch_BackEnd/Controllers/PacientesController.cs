@@ -1,4 +1,5 @@
 ﻿using BeatWatch_BackEnd.Dtos;
+using BeatWatch_BackEnd.infrescture;
 using BeatWatch_BackEnd.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -9,9 +10,9 @@ namespace BeatWatch_BackEnd.Controllers
     [Route("api/[controller]")]
     public class PacientesController : ControllerBase
     {
-        private readonly PacienteService _pacienteService;
+        private readonly IPacienteService _pacienteService;
 
-        public PacientesController(PacienteService pacienteService)
+        public PacientesController(IPacienteService pacienteService)
         {
             _pacienteService = pacienteService;
         }

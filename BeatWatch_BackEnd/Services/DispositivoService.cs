@@ -1,12 +1,13 @@
 ﻿using BeatWatch_BackEnd.Data;
 using BeatWatch_BackEnd.Dtos;
+using BeatWatch_BackEnd.infrescture;
 using BeatWatch_BackEnd.Models;
 using MongoDB.Bson;
 using MongoDB.Driver;
 
 namespace BeatWatch_BackEnd.Services
 {
-    public class DispositivoService
+    public class DispositivoService : IDispositivoService
     {
         private readonly MongoDbContext _context;
 

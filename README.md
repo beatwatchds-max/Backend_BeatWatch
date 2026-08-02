@@ -44,7 +44,7 @@ Las pruebas de integración usan una base MongoDB aislada por ejecución. Declar
 ./scripts/test-integration.sh
 ```
 
-El flujo de GitHub Actions ejecuta auditoría de dependencias, detección de secretos, pruebas con cobertura contra MongoDB y una prueba de humo del contenedor en `docker-compose.ci.yml`. Para reproducir la prueba de despliegue:
+El flujo de GitHub Actions ejecuta auditoría de dependencias, detección de secretos, análisis de configuración con Trivy, pruebas con cobertura contra MongoDB y una prueba de humo del contenedor en `docker-compose.ci.yml`. CodeQL analiza C# en cada pull request, en cambios a ramas protegidas y semanalmente. Dependabot propone actualizaciones semanales de NuGet y GitHub Actions.
 
 ```bash
 docker compose -f docker-compose.ci.yml up --build --wait
@@ -53,6 +53,8 @@ docker compose -f docker-compose.ci.yml down --volumes --remove-orphans
 ```
 
 No uses secretos reales en `appsettings.json` ni en `.env.example`. Si una credencial fue versionada previamente, revócala en el proveedor antes de continuar.
+
+Consulta `SECURITY.md` para informar vulnerabilidades de forma privada. No incluyas secretos ni datos clínicos en incidencias, registros de CI o reportes de seguridad.
 
 ## Despliegue
 
