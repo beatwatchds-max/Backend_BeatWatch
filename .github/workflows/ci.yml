@@ -16,7 +16,7 @@ jobs:
     timeout-minutes: 15
     services:
       mongo:
-        image: mongo:8.0
+        image: mongo:8.2
         ports:
           - 27017:27017
         options: >-
@@ -30,6 +30,9 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+      with:
+        # Gitleaks compares the pushed range, so its base commit must be available.
+        fetch-depth: 0
 
     - name: Setup .NET SDK
       uses: actions/setup-dotnet@v4
@@ -41,6 +44,15 @@ jobs:
 
     - name: Dependency Vulnerability Audit
       run: dotnet list BeatWatch_BackEnd.Tests/BeatWatch_BackEnd.Tests.csproj package --vulnerable --include-transitive
+
+    - name: Configuration scan
+      uses: aquasecurity/trivy-action@0.33.1
+      with:
+        scan-type: config
+        scan-ref: .
+        severity: HIGH,CRITICAL
+        exit-code: "1"
+        ignore-unfixed: true
 
     - name: Secret scan
       uses: gitleaks/gitleaks-action@v2

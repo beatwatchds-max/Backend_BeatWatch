@@ -31,6 +31,7 @@ public class SaludControllerTests
         FrecuenciaCardiaca = 140,
         DuracionEpisodioSeconds = 30,
         IdPaciente = "65f1a2b3c4d5e6f7a8b9c0d1",
-        Sintomas = new SintomasDto()
+        Sintomas = new SintomasDto(),
+        FactoresRiesgo = new FactoresRiesgoDto()
     };
 }
