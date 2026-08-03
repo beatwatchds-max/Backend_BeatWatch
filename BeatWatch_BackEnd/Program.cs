@@ -11,7 +11,6 @@ using System.Text;
 using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
-
 builder.Configuration.AddEnvironmentVariables();
 
 // --- CONFIGURACIÓN DE OPCIONES ---
@@ -33,6 +32,22 @@ builder.Services.AddOptions<RecaptchaSettings>()
 builder.Services.AddOptions<EmailSettings>()
     .Bind(builder.Configuration.GetSection("EmailSettings"))
     .ValidateDataAnnotations();
+
+// --- 1. CONFIGURACIÓN DE CORS ---
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy.WithOrigins(
+                "http://localhost:5173", // React / Vite (puerto por defecto)
+                "http://localhost:5174", // React / Vite (el puerto que usa tu compañero)
+                "http://localhost:3000"  // React clásico / Next.js
+              )
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials(); // Permite envío de cookies/encabezados de autenticación si los usan
+    });
+});
 
 // --- CONFIGURACIÓN DE JWT ---
 var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>()
@@ -59,22 +74,18 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 // --- CONFIGURACIÓN AGRUPADA DE RATE LIMITING ---
 builder.Services.AddRateLimiter(options =>
 {
-    // 1. Respuesta por defecto cuando alguien excede un límite
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
-    // 2. Política existente: Login Web
     options.AddPolicy("login", context =>
         RateLimitPartition.GetFixedWindowLimiter(
             context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
 
-    // 3. Política existente: Recuperación de contraseña
     options.AddPolicy("password-recovery", context =>
         RateLimitPartition.GetFixedWindowLimiter(
             context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             _ => new FixedWindowRateLimiterOptions { PermitLimit = 3, Window = TimeSpan.FromMinutes(15), QueueLimit = 0 }));
 
-    // 4. NUEVA Política: Login Móvil (HU4.4)
     options.AddPolicy("LoginMovilPolicy", context =>
         RateLimitPartition.GetFixedWindowLimiter(
             context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
@@ -94,7 +105,6 @@ builder.Services.AddScoped<AutenticacionService>();
 builder.Services.AddScoped<IPacienteService, PacienteService>();
 builder.Services.AddScoped<ISaludService, SaludService>();
 builder.Services.AddHostedService<MongoDbInitializer>();
-
 builder.Services.AddControllers();
 builder.Services.AddHealthChecks();
 
@@ -103,7 +113,6 @@ builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "BeatWatch API", Version = "v1" });
 
-    // Configuración para el botón Authorize
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = "Autorización JWT usando el esquema Bearer. \r\n\r\n Ingresa 'Bearer' [espacio] y luego tu token en el campo de texto.\r\n\r\nEjemplo: \"Bearer eyJhbGciOiJIUzI1Ni...\"",
@@ -149,6 +158,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// --- 2. USAR CORS (DEBE IR ANTES DE AUTHENTICATION Y AUTHORIZATION) ---
+app.UseCors("AllowFrontend");
 
 app.UseRateLimiter();
 app.UseAuthentication();
