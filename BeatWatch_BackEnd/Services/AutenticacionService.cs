@@ -41,9 +41,10 @@ namespace BeatWatch_BackEnd.Services
 
             bool perfilCompletado = true;      // Por defecto true para Admin/Cuidador
             bool diagnosticoCompletado = true; // Por defecto true para Admin/Cuidador
+            bool dispositivoVinculado = true;  // Por defecto true para Admin/Cuidador
             string? pacienteId = null;
 
-            // SOLO si es Paciente evaluamos sus colecciones clínicas
+            // SOLO si es Paciente evaluamos sus colecciones
             if (esPaciente)
             {
                 var paciente = await _context.Pacientes
@@ -55,13 +56,20 @@ namespace BeatWatch_BackEnd.Services
 
                 if (perfilCompletado)
                 {
+                    // Validar si ya completó su cuestionario clínico
                     diagnosticoCompletado = await _context.Arritmias
                         .Find(a => a.IdPaciente == paciente!.Id)
+                        .AnyAsync();
+
+                    // Validar si ya vinculó su reloj BeatWatch
+                    dispositivoVinculado = await _context.Dispositivos
+                        .Find(d => d.IdPaciente == paciente!.Id) // O d.UsuarioId == usuario.Id según tu modelo
                         .AnyAsync();
                 }
                 else
                 {
                     diagnosticoCompletado = false;
+                    dispositivoVinculado = false;
                 }
             }
 
@@ -101,6 +109,7 @@ namespace BeatWatch_BackEnd.Services
                 // Banderas dinámicas
                 PerfilCompletado = perfilCompletado,
                 DiagnosticoCompletado = diagnosticoCompletado,
+                DispositivoVinculado = dispositivoVinculado, // <--- Retornamos la nueva bandera
                 PacienteId = pacienteId
             };
         }
