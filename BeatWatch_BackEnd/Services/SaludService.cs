@@ -99,60 +99,53 @@ public class SaludService : ISaludService
     {
         var fechaInicio = DateTime.UtcNow.Date.AddDays(-dias);
 
-        // 1. Consultar arritmias del periodo
-        var arritmias = await _context.Arritmias
+        // 1. Obtener episodios automáticos del reloj
+        var episodios = await _context.EpisodiosArritmia
+            .Find(e => e.IdPaciente == idPaciente && e.Fecha >= fechaInicio)
+            .ToListAsync(cancellationToken);
+
+        // 2. Obtener registros manuales con síntomas
+        var arritmiasManuales = await _context.Arritmias
             .Find(a => a.IdPaciente == idPaciente && a.Fecha >= fechaInicio)
             .ToListAsync(cancellationToken);
 
-        // 2. Consultar actividad diaria del periodo
-        var actividades = await _context.ActividadesDiarias
-            .Find(a => a.IdPaciente == idPaciente && a.FechaSincronizacion >= fechaInicio)
-            .ToListAsync(cancellationToken);
-
-        // Conteo de síntomas
+        // Conteo de síntomas (tomados de los formularios manuales en Arritmias)
         var conteoSintomas = new Dictionary<string, int>
     {
-        { "Mareo", arritmias.Count(a => a.Sintomas?.Mareo == true) },
-        { "Palpitaciones", arritmias.Count(a => a.Sintomas?.Palpitaciones == true) },
-        { "DolorPecho", arritmias.Count(a => a.Sintomas?.DolorPecho == true) },
-        { "Desmayo", arritmias.Count(a => a.Sintomas?.Desmayo == true) },
-        { "FaltaAire", arritmias.Count(a => a.Sintomas?.FaltaAire == true) },
-        { "Fatiga", arritmias.Count(a => a.Sintomas?.Fatiga == true) }
+        { "Palpitaciones", arritmiasManuales.Count(a => a.Sintomas?.Palpitaciones == true) },
+        { "Mareo", arritmiasManuales.Count(a => a.Sintomas?.Mareo == true) },
+        { "Fatiga", arritmiasManuales.Count(a => a.Sintomas?.Fatiga == true) },
+        { "FaltaAire", arritmiasManuales.Count(a => a.Sintomas?.FaltaAire == true) },
+        { "DolorPecho", arritmiasManuales.Count(a => a.Sintomas?.DolorPecho == true) },
+        { "Desmayo", arritmiasManuales.Count(a => a.Sintomas?.Desmayo == true) }
     };
 
-        // Cálculos de BPM
-        int bpmMaximo = arritmias.Any() ? arritmias.Max(a => a.FrecuenciaCardiaca) : 0;
-        double bpmPromedio = arritmias.Any() ? Math.Round(arritmias.Average(a => a.FrecuenciaCardiaca), 1) : 0;
-
-        // Porcentaje de días estables (días en el rango sin ningún episodio registrado)
-        var diasConEpisodios = arritmias.Select(a => a.Fecha.ToString("yyyy-MM-dd")).Distinct().Count();
-        double porcentajeEstables = dias > 0
-            ? Math.Round(((double)(dias - diasConEpisodios) / dias) * 100, 1)
-            : 100.0;
-
-        // Gráfica de picos por día
-        var graficaPicos = arritmias
-            .GroupBy(a => a.Fecha.ToString("yyyy-MM-DD"))
-            .Select(g => new PuntoGraficaDto
-            {
-                Fecha = g.Key,
-                BpmMaximo = g.Max(x => x.FrecuenciaCardiaca),
-                BpmPromedio = (int)Math.Round(g.Average(x => x.FrecuenciaCardiaca))
-            })
-            .OrderBy(p => p.Fecha)
+        // Combinar BPM de ambas fuentes para la estadística global
+        var todosLosBpm = episodios.Select(e => e.FrecuenciaCardiaca)
+            .Concat(arritmiasManuales.Select(a => a.FrecuenciaCardiaca))
             .ToList();
+
+        int totalEpisodios = episodios.Count + arritmiasManuales.Count;
+        int bpmMaximo = todosLosBpm.Any() ? todosLosBpm.Max() : 0;
+        double bpmPromedio = todosLosBpm.Any() ? Math.Round(todosLosBpm.Average(), 1) : 0;
+
+        // Fechas con alguna anomalía para calcular % de días estables
+        var fechasConIncidencia = episodios.Select(e => e.Fecha.Date)
+            .Concat(arritmiasManuales.Select(a => a.Fecha.Date))
+            .Distinct()
+            .Count();
+
+        double porcentajeEstables = dias > 0
+            ? Math.Round(((double)(dias - fechasConIncidencia) / dias) * 100, 1)
+            : 100.0;
 
         return new ResumenTableroDto
         {
-            TotalEpisodiosPeriodo = arritmias.Count,
+            TotalEpisodiosPeriodo = totalEpisodios,
             BpmPromedio = bpmPromedio,
             BpmMaximo = bpmMaximo,
             PorcentajeDiasEstables = Math.Max(0, porcentajeEstables),
-            ConteoSintomas = conteoSintomas,
-            TotalPasos = actividades.Sum(a => a.Pasos),
-            TotalCalorias = Math.Round(actividades.Sum(a => a.Calorias), 1),
-            TotalDistanciaKm = Math.Round(actividades.Sum(a => a.DistanciaKm), 2),
-            GraficaPicos = graficaPicos
+            ConteoSintomas = conteoSintomas
         };
     }
 }

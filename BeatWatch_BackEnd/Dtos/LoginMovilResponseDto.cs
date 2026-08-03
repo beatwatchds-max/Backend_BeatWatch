@@ -13,6 +13,7 @@
 
         public bool PerfilCompletado { get; set; }
         public bool DiagnosticoCompletado { get; set; }
+        public bool DispositivoVinculado { get; set; }
         public string? PacienteId { get; set; }
 
     }

@@ -73,6 +73,15 @@ public class SaludServiceTests
                 Desmayo = false,
                 FaltaAire = true,
                 Fatiga = true
+            },
+            FactoresRiesgo = new FactoresRiesgoDto
+            {
+                HipertensionArterial = true,
+                ObesidadImcElevado = false,
+                ApneaSueno = true,
+                Tabaquismo = false,
+                Alcoholismo = false,
+                EstresCronico = true
             }
         }, CancellationToken.None);
         var despues = DateTime.UtcNow;
@@ -88,6 +97,12 @@ public class SaludServiceTests
         Assert.False(insertada.Sintomas.Desmayo);
         Assert.True(insertada.Sintomas.FaltaAire);
         Assert.True(insertada.Sintomas.Fatiga);
+        Assert.True(insertada.FactoresRiesgo.HipertensionArterial);
+        Assert.False(insertada.FactoresRiesgo.ObesidadImcElevado);
+        Assert.True(insertada.FactoresRiesgo.ApneaSueno);
+        Assert.False(insertada.FactoresRiesgo.Tabaquismo);
+        Assert.False(insertada.FactoresRiesgo.Alcoholismo);
+        Assert.True(insertada.FactoresRiesgo.EstresCronico);
         Assert.Equal(DateTimeKind.Utc, insertada.Fecha.Kind);
         Assert.InRange(insertada.Fecha, antes, despues);
         coleccion.Verify(c => c.InsertOneAsync(insertada, It.IsAny<InsertOneOptions>(), CancellationToken.None), Times.Once);

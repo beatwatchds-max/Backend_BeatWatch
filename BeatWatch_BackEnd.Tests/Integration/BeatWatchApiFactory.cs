@@ -16,8 +16,17 @@ public sealed class BeatWatchApiFactory : WebApplicationFactory<Program>, IAsync
     {
         builder.UseEnvironment("Testing");
         builder.UseSetting("https_port", "443");
-        builder.ConfigureAppConfiguration(configuration =>
+        builder.UseSetting("MongoDbSettings:ConnectionString", _connectionString);
+        builder.UseSetting("MongoDbSettings:DatabaseName", DatabaseName);
+        builder.UseSetting("JwtSettings:Issuer", "https://tests.beatwatch.local");
+        builder.UseSetting("JwtSettings:Audience", "beatwatch-tests");
+        builder.UseSetting("JwtSettings:SigningKey", "integration-tests-signing-key-must-be-32-bytes");
+        builder.UseSetting("JwtSettings:ExpirationMinutes", "15");
+        builder.UseSetting("RecaptchaSettings:SecretKey", "test-secret");
+        builder.UseSetting("EmailSettings:PasswordResetUrl", "https://tests.beatwatch.local/reset");
+        builder.ConfigureAppConfiguration((_, configuration) =>
         {
+            configuration.Sources.Clear();
             configuration.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["MongoDbSettings:ConnectionString"] = _connectionString,

@@ -1,5 +1,6 @@
 ﻿using BeatWatch_BackEnd.Data;
 using BeatWatch_BackEnd.Dtos;
+using BeatWatch_BackEnd.infrescture;
 using BeatWatch_BackEnd.Models;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -7,7 +8,7 @@ using System.Security.Cryptography;
 
 namespace BeatWatch_BackEnd.Services
 {
-    public class PacienteService
+    public class PacienteService : IPacienteService
     {
         private readonly MongoDbContext _context;
 
