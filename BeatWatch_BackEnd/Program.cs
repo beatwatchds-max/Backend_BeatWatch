@@ -41,7 +41,7 @@ builder.Services.AddCors(options =>
         policy.WithOrigins(
                 "http://localhost:5173", // React / Vite (puerto por defecto)
                 "http://localhost:5174", // React / Vite (el puerto que usa tu compañero)
-                "http://localhost:3000"  // React clásico / Next.js
+                "http://localhost:3000",  // React clásico / Next.js
                 "https://frontend-beatwatch-857q.onrender.com"
               )
               .AllowAnyHeader()
