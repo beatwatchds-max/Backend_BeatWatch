@@ -37,12 +37,12 @@ namespace BeatWatch_BackEnd.Services
                 ? usuario.IdLicencia
                 : (licencia?.Id ?? string.Empty);
 
-            // Evaluamos el rol
             bool esPaciente = usuario.Rol.Equals("Paciente", StringComparison.OrdinalIgnoreCase);
 
             bool perfilCompletado = true;
             bool diagnosticoCompletado = true;
             bool dispositivoVinculado = true;
+            bool registroPacienteCompletado = true; // Por defecto en true para Paciente
             string? pacienteId = null;
 
             if (esPaciente)
@@ -70,20 +70,33 @@ namespace BeatWatch_BackEnd.Services
                     dispositivoVinculado = false;
                 }
             }
+            else // 🟢 LÓGICA PARA ADMINISTRADOR Y CUIDADOR
+            {
+                if (!string.IsNullOrEmpty(idLicenciaEncontrada))
+                {
+                    // Comprobar si ya existe algún usuario con Rol "Paciente" vinculado a esta IdLicencia
+                    registroPacienteCompletado = await _context.Usuarios
+                        .Find(u => u.IdLicencia == idLicenciaEncontrada && u.Rol == "Paciente")
+                        .AnyAsync();
+                }
+                else
+                {
+                    registroPacienteCompletado = false;
+                }
+            }
 
             // Generación del Token JWT
             var jwtKey = _config["JwtSettings:SigningKey"];
             var keyBytes = Encoding.UTF8.GetBytes(jwtKey!);
             var creds = new SigningCredentials(new SymmetricSecurityKey(keyBytes), SecurityAlgorithms.HmacSha256);
 
-            // 🟢 AGREGAMOS idLicencia A LOS CLAIMS
             var claims = new[]
             {
                 new Claim(ClaimTypes.NameIdentifier, usuarioId),
                 new Claim(ClaimTypes.Name, usuario.Nombre),
                 new Claim(ClaimTypes.Role, usuario.Rol),
                 new Claim("TokenMovil", usuario.TokenMovil!),
-                new Claim("idLicencia", idLicenciaEncontrada) // 👈 AHORA EL TOKEN SÍ LLEVA LA LICENCIA
+                new Claim("idLicencia", idLicenciaEncontrada)
             };
 
             var tokenObject = new JwtSecurityToken(
@@ -108,6 +121,7 @@ namespace BeatWatch_BackEnd.Services
                 PerfilCompletado = perfilCompletado,
                 DiagnosticoCompletado = diagnosticoCompletado,
                 DispositivoVinculado = dispositivoVinculado,
+                RegistroPacienteCompletado = registroPacienteCompletado, // 👈 Retornamos la nueva bandera
                 PacienteId = pacienteId
             };
         }
