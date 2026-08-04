@@ -68,7 +68,8 @@ namespace BeatWatch_BackEnd.Services
                 Rol = "Paciente",
                 TokenMovil = nuevoToken,
                 Activo = true,
-                FechaCreacion = DateTime.UtcNow
+                FechaCreacion = DateTime.UtcNow,
+                IdLicencia = idLicencia
             };
 
             // 4. Insertar el Usuario en MongoDB
