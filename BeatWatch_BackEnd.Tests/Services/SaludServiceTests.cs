@@ -13,32 +13,32 @@ public class SaludServiceTests
     public async Task ObtenerHistorialArritmiasAsync_FiltraPorPacienteYOrdenaPorFechaDescendente()
     {
         const string idPaciente = "65f1a2b3c4d5e6f7a8b9c0d1";
-        var arritmias = new List<Arritmia>
+        var arritmias = new List<EpisodioArritmia>
         {
             new() { IdPaciente = idPaciente, Fecha = DateTime.UtcNow },
             new() { IdPaciente = idPaciente, Fecha = DateTime.UtcNow.AddMinutes(-1) }
         };
-        var cursor = new Mock<IAsyncCursor<Arritmia>>();
+        var cursor = new Mock<IAsyncCursor<EpisodioArritmia>>();
         cursor.SetupSequence(c => c.MoveNextAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(true)
             .ReturnsAsync(false);
         cursor.Setup(c => c.Current).Returns(arritmias);
-        var coleccion = new Mock<IMongoCollection<Arritmia>>();
+        var coleccion = new Mock<IMongoCollection<EpisodioArritmia>>();
         coleccion.Setup(c => c.FindAsync(
-                It.IsAny<FilterDefinition<Arritmia>>(),
-                It.IsAny<FindOptions<Arritmia, Arritmia>>(),
+                It.IsAny<FilterDefinition<EpisodioArritmia>>(),
+                It.IsAny<FindOptions<EpisodioArritmia, EpisodioArritmia>>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(cursor.Object);
         var contexto = new Mock<MongoDbContext>();
-        contexto.SetupGet(c => c.Arritmias).Returns(coleccion.Object);
+        contexto.SetupGet(c => c.EpisodiosArritmia).Returns(coleccion.Object);
         var servicio = new SaludService(contexto.Object);
 
         var resultado = await servicio.ObtenerHistorialArritmiasAsync(idPaciente, CancellationToken.None);
 
         Assert.Equal(arritmias, resultado);
         coleccion.Verify(c => c.FindAsync(
-            It.IsAny<FilterDefinition<Arritmia>>(),
-            It.Is<FindOptions<Arritmia, Arritmia>>(options => options.Sort != null),
+            It.IsAny<FilterDefinition<EpisodioArritmia>>(),
+            It.Is<FindOptions<EpisodioArritmia, EpisodioArritmia>>(options => options.Sort != null),
             CancellationToken.None), Times.Once);
     }
 

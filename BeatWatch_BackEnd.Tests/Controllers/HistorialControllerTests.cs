@@ -12,7 +12,7 @@ public class HistorialControllerTests
     public async Task ObtenerArritmias_RetornaHistorialDelPaciente()
     {
         const string idPaciente = "65f1a2b3c4d5e6f7a8b9c0d1";
-        var historial = new List<Arritmia> { new() { IdPaciente = idPaciente } };
+        var historial = new List<EpisodioArritmia> { new() { IdPaciente = idPaciente } };
         var service = new Mock<ISaludService>();
         service.Setup(s => s.ObtenerHistorialArritmiasAsync(idPaciente, It.IsAny<CancellationToken>()))
             .ReturnsAsync(historial);
