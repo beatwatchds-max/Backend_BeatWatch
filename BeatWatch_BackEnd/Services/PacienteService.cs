@@ -1,5 +1,6 @@
 ﻿using BeatWatch_BackEnd.Data;
 using BeatWatch_BackEnd.Dtos;
+using BeatWatch_BackEnd.DTOs;
 using BeatWatch_BackEnd.infrescture;
 using BeatWatch_BackEnd.Models;
 using MongoDB.Bson;
@@ -148,6 +149,73 @@ namespace BeatWatch_BackEnd.Services
             return await _context.Pacientes
                 .Find(p => p.UsuarioId == usuarioId)
                 .FirstOrDefaultAsync();
+        }
+        public async Task<bool> ActualizarPerfilPacienteAsync(string usuarioId, ActualizarPerfilPacienteDto dto)
+        {
+            // 1. Buscamos si existe el paciente por UsuarioId
+            var paciente = await _context.Pacientes
+                .Find(p => p.UsuarioId == usuarioId)
+                .FirstOrDefaultAsync();
+
+            if (paciente == null)
+            {
+                return false;
+            }
+
+            // 2. Construimos la lista de updates condicionales
+            var updates = new List<UpdateDefinition<Paciente>>();
+
+            if (!string.IsNullOrWhiteSpace(dto.Curp))
+                updates.Add(Builders<Paciente>.Update.Set(p => p.CURP, dto.Curp.Trim().ToUpperInvariant()));
+
+            if (dto.Edad.HasValue)
+                updates.Add(Builders<Paciente>.Update.Set(p => p.Edad, dto.Edad.Value));
+
+            if (!string.IsNullOrWhiteSpace(dto.Sexo))
+                updates.Add(Builders<Paciente>.Update.Set(p => p.Sexo, dto.Sexo.Trim()));
+
+            if (dto.Peso.HasValue)
+                updates.Add(Builders<Paciente>.Update.Set(p => p.Peso, dto.Peso.Value));
+
+            if (dto.Estatura.HasValue)
+                updates.Add(Builders<Paciente>.Update.Set(p => p.Estatura, dto.Estatura.Value));
+
+            if (dto.FechaNacimiento.HasValue)
+                updates.Add(Builders<Paciente>.Update.Set(p => p.FechaNacimiento, dto.FechaNacimiento.Value));
+
+            if (dto.Direccion != null)
+                updates.Add(Builders<Paciente>.Update.Set(p => p.Direccion, dto.Direccion));
+
+            if (!string.IsNullOrWhiteSpace(dto.TipoSangre))
+                updates.Add(Builders<Paciente>.Update.Set(p => p.TipoSangre, dto.TipoSangre.Trim().ToUpperInvariant()));
+
+            if (dto.IdLicencia != null)
+                updates.Add(Builders<Paciente>.Update.Set(p => p.IdLicencia, dto.IdLicencia));
+
+            if (dto.Fotografia != null)
+            {
+                byte[]? fotoBytes = !string.IsNullOrEmpty(dto.Fotografia)
+                    ? Convert.FromBase64String(dto.Fotografia)
+                    : null;
+
+                updates.Add(Builders<Paciente>.Update.Set(p => p.Fotografia, fotoBytes));
+            }
+
+            // Si no enviaron ningún campo para modificar
+            if (updates.Count == 0)
+            {
+                return true;
+            }
+
+            // 3. Combinamos todos los sets dinámicos y ejecutamos
+            var updateCombined = Builders<Paciente>.Update.Combine(updates);
+
+            var result = await _context.Pacientes.UpdateOneAsync(
+                p => p.Id == paciente.Id,
+                updateCombined
+            );
+
+            return result.ModifiedCount > 0 || result.MatchedCount > 0;
         }
     }
 }
