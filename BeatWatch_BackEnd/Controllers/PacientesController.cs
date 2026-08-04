@@ -1,4 +1,5 @@
 ﻿using BeatWatch_BackEnd.Dtos;
+using BeatWatch_BackEnd.DTOs;
 using BeatWatch_BackEnd.infrescture;
 using BeatWatch_BackEnd.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -93,6 +94,21 @@ namespace BeatWatch_BackEnd.Controllers
                 idLicencia = paciente.IdLicencia,
                 fotografia = paciente.Fotografia
             });
+        }
+
+        [HttpPatch("perfil/{usuarioId}")]
+        [Authorize]
+        public async Task<IActionResult> ActualizarPerfilParcial(string usuarioId, [FromBody] ActualizarPerfilPacienteDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var actualizado = await _pacienteService.ActualizarPerfilPacienteAsync(usuarioId, dto);
+
+            if (!actualizado)
+                return NotFound(new { mensaje = "No se encontró el perfil del paciente para actualizar." });
+
+            return Ok(new { mensaje = "Perfil actualizado exitosamente." });
         }
     }
 }
