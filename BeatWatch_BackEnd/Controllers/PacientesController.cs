@@ -125,5 +125,45 @@ namespace BeatWatch_BackEnd.Controllers
 
             return Ok(new { mensaje = "Perfil actualizado exitosamente." });
         }
+
+        [HttpPost("registrar-completo")]
+        [Authorize(Roles = "Administrador,Cuidador")]
+        public async Task<IActionResult> RegistrarPacienteCompleto([FromBody] RegistrarPacienteCompletoDto dto)
+        {
+            try
+            {
+                // Extracción limpia del Claim de Licencia
+                var idLicenciaClaim = User.FindFirst("idLicencia")?.Value
+                                    ?? User.FindFirst("LicenciaId")?.Value;
+
+                if (string.IsNullOrEmpty(idLicenciaClaim))
+                {
+                    return BadRequest(new { mensaje = "No se encontró el identificador de la licencia en la sesión actual." });
+                }
+
+                var (usuario, paciente) = await _pacienteService.RegistrarPacienteCompletoAsync(dto, idLicenciaClaim);
+
+                return StatusCode(StatusCodes.Status201Created, new
+                {
+                    mensaje = "Paciente y perfil registrados exitosamente.",
+                    usuarioId = usuario.Id,
+                    pacienteId = paciente.Id,
+                    tokenMovil = usuario.TokenMovil,
+                    idLicencia = usuario.IdLicencia
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { mensaje = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(new { mensaje = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { mensaje = "Error al completar el registro del paciente.", detalle = ex.Message });
+            }
+        }
     }
 }

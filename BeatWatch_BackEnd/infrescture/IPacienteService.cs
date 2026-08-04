@@ -10,4 +10,8 @@ public interface IPacienteService
     Task<Paciente> CrearPerfilAsync(CrearPerfilPacienteDto perfilDto);
     Task<Paciente?> ObtenerPorUsuarioIdAsync(string usuarioId);
     Task<bool> ActualizarPerfilPacienteAsync(string usuarioId, ActualizarPerfilPacienteDto dto);
+    Task<(Usuario Usuario, Paciente Paciente)> RegistrarPacienteCompletoAsync(
+    RegistrarPacienteCompletoDto dto,
+    string idLicencia
+);
 }

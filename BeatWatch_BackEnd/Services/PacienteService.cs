@@ -211,5 +211,89 @@ namespace BeatWatch_BackEnd.Services
 
             return result.ModifiedCount > 0 || result.MatchedCount > 0;
         }
+
+        public async Task<(Usuario Usuario, Paciente Paciente)> RegistrarPacienteCompletoAsync(
+    RegistrarPacienteCompletoDto dto,
+    string idLicencia)
+        {
+            var curp = dto.CURP.Trim().ToUpperInvariant();
+            var tipoSangre = dto.TipoSangre.Trim().ToUpperInvariant();
+
+            // 1. Validar la Licencia
+            if (string.IsNullOrWhiteSpace(idLicencia) || !ObjectId.TryParse(idLicencia, out _))
+            {
+                throw new ArgumentException("La licencia asociada a la sesión no es válida.");
+            }
+
+            var licencia = await _context.Licencias
+                .Find(l => l.Id == idLicencia && l.Activa)
+                .FirstOrDefaultAsync();
+
+            if (licencia is null || licencia.FechaFin < DateTime.UtcNow)
+            {
+                throw new ArgumentException("La licencia indicada no existe o no se encuentra activa.");
+            }
+
+            // 2. Validar Unicidad de CURP
+            if (await _context.Pacientes.Find(p => p.CURP == curp).AnyAsync())
+            {
+                throw new InvalidOperationException("Ya existe un paciente registrado con esta CURP.");
+            }
+
+            // 3. Generar Token Único de 9 dígitos para la app móvil
+            string tokenMovil = await GenerarTokenNumericoUnicoAsync();
+
+            // 4. Crear e insertar entidad Usuario
+            var nuevoUsuario = new Usuario
+            {
+                Nombre = dto.NombreCompleto,
+                Correo = dto.Correo.Trim().ToLowerInvariant(),
+                Telefono = dto.Telefono ?? string.Empty,
+                Rol = "Paciente",
+                TokenMovil = tokenMovil,
+                Activo = true,
+                FechaCreacion = DateTime.UtcNow,
+                IdLicencia = idLicencia
+            };
+
+            await _context.Usuarios.InsertOneAsync(nuevoUsuario);
+
+            // 5. Vincular el Usuario a la Licencia
+            var filterLicencia = Builders<Licencia>.Filter.Eq(l => l.Id, idLicencia);
+            var updateLicencia = Builders<Licencia>.Update.Push(l => l.UsuariosAsociados, nuevoUsuario.Id);
+            await _context.Licencias.UpdateOneAsync(filterLicencia, updateLicencia);
+
+            // 6. Convertir Fotografía (si aplica Base64)
+            byte[]? fotoBytes = !string.IsNullOrEmpty(dto.Fotografia)
+                ? Convert.FromBase64String(dto.Fotografia)
+                : null;
+
+            // 7. Crear e insertar entidad Paciente
+            var nuevoPaciente = new Paciente
+            {
+                UsuarioId = nuevoUsuario.Id,
+                CURP = curp,
+                Edad = dto.Edad,
+                Sexo = dto.Sexo.Trim(),
+                Peso = dto.Peso,
+                Estatura = dto.Estatura,
+                TipoSangre = tipoSangre,
+                IdLicencia = idLicencia,
+                Fotografia = fotoBytes,
+                FechaNacimiento = dto.FechaNacimiento,
+                Direccion = dto.Direccion
+            };
+
+            try
+            {
+                await _context.Pacientes.InsertOneAsync(nuevoPaciente);
+            }
+            catch (MongoWriteException ex) when (ex.WriteError.Category == ServerErrorCategory.DuplicateKey)
+            {
+                throw new InvalidOperationException("Ya existe un paciente registrado con esta CURP.", ex);
+            }
+
+            return (nuevoUsuario, nuevoPaciente);
+        }
     }
 }
