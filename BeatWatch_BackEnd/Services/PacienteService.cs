@@ -39,30 +39,27 @@ namespace BeatWatch_BackEnd.Services
             return tokenGenerado;
         }
 
-        public async Task<Usuario> RegistrarPacienteAsync(CrearPacienteDto pacienteDto)
+        public async Task<Usuario> RegistrarPacienteAsync(CrearPacienteDto pacienteDto, string idLicencia)
         {
-            // 1. Validar que la licencia exista antes de asociar
-            if (!string.IsNullOrWhiteSpace(pacienteDto.IdLicencia))
+            // 1. Validar que la licencia exista y esté activa
+            if (string.IsNullOrWhiteSpace(idLicencia) || !ObjectId.TryParse(idLicencia, out _))
             {
-                if (!ObjectId.TryParse(pacienteDto.IdLicencia, out _))
-                {
-                    throw new ArgumentException("El IdLicencia proporcionado no tiene un formato válido.");
-                }
-
-                var licenciaExiste = await _context.Licencias
-                    .Find(l => l.Id == pacienteDto.IdLicencia && l.Activa)
-                    .AnyAsync();
-
-                if (!licenciaExiste)
-                {
-                    throw new ArgumentException("La licencia especificada no existe o no se encuentra activa.");
-                }
+                throw new ArgumentException("La licencia del usuario autenticado no es válida.");
             }
 
-            // 2. Generar el token de 9 dígitos
+            var licenciaExiste = await _context.Licencias
+                .Find(l => l.Id == idLicencia && l.Activa)
+                .AnyAsync();
+
+            if (!licenciaExiste)
+            {
+                throw new ArgumentException("La licencia especificada no existe o no se encuentra activa.");
+            }
+
+            // 2. Generar el token único de 9 dígitos
             string nuevoToken = await GenerarTokenNumericoUnicoAsync();
 
-            // 3. Crear el objeto del nuevo paciente (sin guardar IdLicencia en el usuario)
+            // 3. Crear el objeto Usuario (Paciente)
             var nuevoPaciente = new Usuario
             {
                 Nombre = pacienteDto.NombreCompleto,
@@ -77,18 +74,14 @@ namespace BeatWatch_BackEnd.Services
             // 4. Insertar el Usuario en MongoDB
             await _context.Usuarios.InsertOneAsync(nuevoPaciente);
 
-            // 🟢 5. Vincular el ID del usuario recién creado a la Licencia (Lista de UsuariosAsociados)
-            if (!string.IsNullOrWhiteSpace(pacienteDto.IdLicencia))
-            {
-                var filterLicencia = Builders<Licencia>.Filter.Eq(l => l.Id, pacienteDto.IdLicencia);
-                var updateLicencia = Builders<Licencia>.Update.Push(l => l.UsuariosAsociados, nuevoPaciente.Id);
+            // 5. Vincular el ID del nuevo paciente a la lista de UsuariosAsociados de la Licencia
+            var filterLicencia = Builders<Licencia>.Filter.Eq(l => l.Id, idLicencia);
+            var updateLicencia = Builders<Licencia>.Update.Push(l => l.UsuariosAsociados, nuevoPaciente.Id);
 
-                await _context.Licencias.UpdateOneAsync(filterLicencia, updateLicencia);
-            }
+            await _context.Licencias.UpdateOneAsync(filterLicencia, updateLicencia);
 
             return nuevoPaciente;
         }
-
         public async Task<Paciente> CrearPerfilAsync(CrearPerfilPacienteDto perfilDto)
         {
             var curp = perfilDto.CURP.Trim().ToUpperInvariant();
