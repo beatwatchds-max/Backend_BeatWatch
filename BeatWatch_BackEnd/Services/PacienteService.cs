@@ -66,7 +66,7 @@ namespace BeatWatch_BackEnd.Services
             {
                 Nombre = pacienteDto.NombreCompleto,
                 Correo = pacienteDto.Correo,
-                Telefono = pacienteDto.Telefono,
+                Telefono = pacienteDto.Telefono ?? string.Empty,
                 Rol = "Paciente",
                 TokenMovil = nuevoToken,
                 Activo = true,
