@@ -92,7 +92,43 @@ jobs:
       run: docker compose -f docker-compose.ci.yml up --build --wait
 
     - name: Verify health endpoint
-      run: curl --fail --retry 5 --retry-connrefused http://localhost:8080/health
+      run: |
+        for attempt in {1..30}; do
+          echo "Intento $attempt de 30"
+
+          if curl --fail --silent --show-error \
+            http://127.0.0.1:8080/health; then
+            echo
+            echo "Health endpoint funcionando correctamente"
+            exit 0
+          fi
+
+          if ! kill -0 "$(cat api.pid)" 2>/dev/null; then
+            echo "La API se cerró durante el arranque"
+            echo "=== Log completo ==="
+            cat api.log || true
+            exit 1
+          fi
+
+          sleep 2
+        done
+
+        echo "La API no estuvo disponible después de 60 segundos"
+        cat api.log || true
+        exit 1
+    
+
+    - name: Show API logs on failure
+      if: failure()
+      run: |
+        echo "=== API logs ==="
+        cat api.log || true
+
+        echo "=== Puertos abiertos ==="
+        ss -ltnp || true
+
+        echo "=== Procesos dotnet ==="
+        ps aux | grep dotnet || true
 
     - name: Stop test environment
       if: always()
