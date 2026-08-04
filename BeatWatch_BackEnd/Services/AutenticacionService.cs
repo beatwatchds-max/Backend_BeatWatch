@@ -42,7 +42,7 @@ namespace BeatWatch_BackEnd.Services
             bool perfilCompletado = true;
             bool diagnosticoCompletado = true;
             bool dispositivoVinculado = true;
-            bool registroPacienteCompletado = true; // Por defecto en true para Paciente
+            bool registroPacienteCompletado = true;
             string? pacienteId = null;
 
             if (esPaciente)
@@ -70,18 +70,41 @@ namespace BeatWatch_BackEnd.Services
                     dispositivoVinculado = false;
                 }
             }
-            else // 🟢 LÓGICA PARA ADMINISTRADOR Y CUIDADOR
+            else // Lógica para Administrador / Cuidador
             {
                 if (!string.IsNullOrEmpty(idLicenciaEncontrada))
                 {
-                    // Comprobar si ya existe algún usuario con Rol "Paciente" vinculado a esta IdLicencia
-                    registroPacienteCompletado = await _context.Usuarios
-                        .Find(u => u.IdLicencia == idLicenciaEncontrada && u.Rol == "Paciente")
-                        .AnyAsync();
+                    // 1. Verificar si ya se registró al paciente de la licencia
+                    var pacienteAsociado = await _context.Pacientes
+                        .Find(p => p.IdLicencia == idLicenciaEncontrada)
+                        .FirstOrDefaultAsync();
+
+                    registroPacienteCompletado = pacienteAsociado != null;
+                    pacienteId = pacienteAsociado?.Id;
+
+                    if (registroPacienteCompletado)
+                    {
+                        // 2. Evaluar si dicho paciente ya tiene arritmias/diagnóstico registrados
+                        diagnosticoCompletado = await _context.Arritmias
+                            .Find(a => a.IdPaciente == pacienteAsociado!.Id)
+                            .AnyAsync();
+
+                        // 3. Evaluar si el paciente ya vinculó su dispositivo
+                        dispositivoVinculado = await _context.Dispositivos
+                            .Find(d => d.IdPaciente == pacienteAsociado!.Id)
+                            .AnyAsync();
+                    }
+                    else
+                    {
+                        diagnosticoCompletado = false;
+                        dispositivoVinculado = false;
+                    }
                 }
                 else
                 {
                     registroPacienteCompletado = false;
+                    diagnosticoCompletado = false;
+                    dispositivoVinculado = false;
                 }
             }
 
