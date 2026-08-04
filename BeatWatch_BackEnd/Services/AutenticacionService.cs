@@ -37,12 +37,12 @@ namespace BeatWatch_BackEnd.Services
                 ? usuario.IdLicencia
                 : (licencia?.Id ?? string.Empty);
 
-            // Evaluamos el rol
             bool esPaciente = usuario.Rol.Equals("Paciente", StringComparison.OrdinalIgnoreCase);
 
             bool perfilCompletado = true;
             bool diagnosticoCompletado = true;
             bool dispositivoVinculado = true;
+            bool registroPacienteCompletado = true;
             string? pacienteId = null;
 
             if (esPaciente)
@@ -70,20 +70,56 @@ namespace BeatWatch_BackEnd.Services
                     dispositivoVinculado = false;
                 }
             }
+            else // Lógica para Administrador / Cuidador
+            {
+                if (!string.IsNullOrEmpty(idLicenciaEncontrada))
+                {
+                    // 1. Verificar si ya se registró al paciente de la licencia
+                    var pacienteAsociado = await _context.Pacientes
+                        .Find(p => p.IdLicencia == idLicenciaEncontrada)
+                        .FirstOrDefaultAsync();
+
+                    registroPacienteCompletado = pacienteAsociado != null;
+                    pacienteId = pacienteAsociado?.Id;
+
+                    if (registroPacienteCompletado)
+                    {
+                        // 2. Evaluar si dicho paciente ya tiene arritmias/diagnóstico registrados
+                        diagnosticoCompletado = await _context.Arritmias
+                            .Find(a => a.IdPaciente == pacienteAsociado!.Id)
+                            .AnyAsync();
+
+                        // 3. Evaluar si el paciente ya vinculó su dispositivo
+                        dispositivoVinculado = await _context.Dispositivos
+                            .Find(d => d.IdPaciente == pacienteAsociado!.Id)
+                            .AnyAsync();
+                    }
+                    else
+                    {
+                        diagnosticoCompletado = false;
+                        dispositivoVinculado = false;
+                    }
+                }
+                else
+                {
+                    registroPacienteCompletado = false;
+                    diagnosticoCompletado = false;
+                    dispositivoVinculado = false;
+                }
+            }
 
             // Generación del Token JWT
             var jwtKey = _config["JwtSettings:SigningKey"];
             var keyBytes = Encoding.UTF8.GetBytes(jwtKey!);
             var creds = new SigningCredentials(new SymmetricSecurityKey(keyBytes), SecurityAlgorithms.HmacSha256);
 
-            // 🟢 AGREGAMOS idLicencia A LOS CLAIMS
             var claims = new[]
             {
                 new Claim(ClaimTypes.NameIdentifier, usuarioId),
                 new Claim(ClaimTypes.Name, usuario.Nombre),
                 new Claim(ClaimTypes.Role, usuario.Rol),
                 new Claim("TokenMovil", usuario.TokenMovil!),
-                new Claim("idLicencia", idLicenciaEncontrada) // 👈 AHORA EL TOKEN SÍ LLEVA LA LICENCIA
+                new Claim("idLicencia", idLicenciaEncontrada)
             };
 
             var tokenObject = new JwtSecurityToken(
@@ -108,6 +144,7 @@ namespace BeatWatch_BackEnd.Services
                 PerfilCompletado = perfilCompletado,
                 DiagnosticoCompletado = diagnosticoCompletado,
                 DispositivoVinculado = dispositivoVinculado,
+                RegistroPacienteCompletado = registroPacienteCompletado, // 👈 Retornamos la nueva bandera
                 PacienteId = pacienteId
             };
         }

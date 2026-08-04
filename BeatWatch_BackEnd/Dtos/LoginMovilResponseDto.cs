@@ -14,6 +14,7 @@
         public bool PerfilCompletado { get; set; }
         public bool DiagnosticoCompletado { get; set; }
         public bool DispositivoVinculado { get; set; }
+        public bool RegistroPacienteCompletado { get; set; }
         public string? PacienteId { get; set; }
 
     }
