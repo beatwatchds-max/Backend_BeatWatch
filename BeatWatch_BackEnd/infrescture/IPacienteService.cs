@@ -6,7 +6,7 @@ namespace BeatWatch_BackEnd.infrescture;
 
 public interface IPacienteService
 {
-    Task<Usuario> RegistrarPacienteAsync(CrearPacienteDto pacienteDto);
+    Task<Usuario> RegistrarPacienteAsync(CrearPacienteDto pacienteDto, string idLicencia);
     Task<Paciente> CrearPerfilAsync(CrearPerfilPacienteDto perfilDto);
     Task<Paciente?> ObtenerPorUsuarioIdAsync(string usuarioId);
     Task<bool> ActualizarPerfilPacienteAsync(string usuarioId, ActualizarPerfilPacienteDto dto);

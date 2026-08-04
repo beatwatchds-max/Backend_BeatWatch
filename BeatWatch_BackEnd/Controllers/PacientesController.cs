@@ -20,12 +20,23 @@ namespace BeatWatch_BackEnd.Controllers
         }
 
         // 1. POST /api/Pacientes/registrar
+        // 1. POST /api/Pacientes/registrar
         [HttpPost("registrar")]
+        [Authorize(Roles = "Administrador,Cuidador")] // Endpoint restringido a la Web
         public async Task<IActionResult> RegistrarPaciente([FromBody] CrearPacienteDto pacienteDto)
         {
             try
             {
-                var pacienteCreado = await _pacienteService.RegistrarPacienteAsync(pacienteDto);
+                // Extraer la IdLicencia desde el Token JWT del usuario de la sesión Web
+                var idLicenciaClaim = User.FindFirst("idLicencia")?.Value
+                                    ?? User.FindFirst("LicenciaId")?.Value;
+
+                if (string.IsNullOrEmpty(idLicenciaClaim))
+                {
+                    return BadRequest(new { mensaje = "No se encontró el identificador de licencia en el token de autenticación." });
+                }
+
+                var pacienteCreado = await _pacienteService.RegistrarPacienteAsync(pacienteDto, idLicenciaClaim);
 
                 return Ok(new
                 {
@@ -33,6 +44,10 @@ namespace BeatWatch_BackEnd.Controllers
                     pacienteId = pacienteCreado.Id,
                     tokenGenerado = pacienteCreado.TokenMovil
                 });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { mensaje = ex.Message });
             }
             catch (Exception ex)
             {

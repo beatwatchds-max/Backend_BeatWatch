@@ -27,11 +27,11 @@ namespace BeatWatch_BackEnd.Services
                 .Find(u => u.TokenMovil == tokenMovil && u.Activo == true)
                 .FirstOrDefaultAsync();
 
-            if (usuario == null) return null;
+            if (usuario?.Id is not string usuarioId) return null;
 
             // Búsqueda de la licencia asociada
             var licencia = await _context.Licencias
-                .Find(l => l.Activa == true && (l.UsuarioId == usuario.Id || l.UsuariosAsociados.Contains(usuario.Id)))
+                .Find(l => l.Activa == true && (l.UsuarioId == usuarioId || l.UsuariosAsociados.Contains(usuarioId)))
                 .FirstOrDefaultAsync();
 
             string idLicenciaEncontrada = licencia?.Id ?? string.Empty;
@@ -48,7 +48,7 @@ namespace BeatWatch_BackEnd.Services
             if (esPaciente)
             {
                 var paciente = await _context.Pacientes
-                    .Find(p => p.UsuarioId == usuario.Id)
+                    .Find(p => p.UsuarioId == usuarioId)
                     .FirstOrDefaultAsync();
 
                 perfilCompletado = paciente != null;
@@ -80,7 +80,7 @@ namespace BeatWatch_BackEnd.Services
 
             var claims = new[]
             {
-        new Claim(ClaimTypes.NameIdentifier, usuario.Id!),
+        new Claim(ClaimTypes.NameIdentifier, usuarioId),
         new Claim(ClaimTypes.Name, usuario.Nombre),
         new Claim(ClaimTypes.Role, usuario.Rol),
         new Claim("TokenMovil", usuario.TokenMovil!)
@@ -99,7 +99,7 @@ namespace BeatWatch_BackEnd.Services
             return new LoginMovilResponseDto
             {
                 TokenJwt = tokenJwtString,
-                UsuarioId = usuario.Id,
+                UsuarioId = usuarioId,
                 Rol = usuario.Rol,
                 Nombre = usuario.Nombre,
                 Correo = usuario.Correo ?? string.Empty,
