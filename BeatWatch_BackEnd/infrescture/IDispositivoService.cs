@@ -1,12 +1,15 @@
 using BeatWatch_BackEnd.Dtos;
 using BeatWatch_BackEnd.Models;
 
-namespace BeatWatch_BackEnd.infrescture;
-
-public interface IDispositivoService
+namespace BeatWatch_BackEnd.infrescture
 {
-    Task<Dispositivo> EmparejarDispositivoAsync(EmparejarDispositivoDto dto);
-    Task<List<Dispositivo>> ObtenerDispositivosPorPacienteAsync(string? idPaciente);
-    Task<bool> ActualizarAliasAsync(string id, string nuevoAlias);
-    Task<bool> EliminarDispositivoAsync(string id);
+    public interface IDispositivoService
+    {
+        Task<SesionEmparejamientoResponseDto> CrearSesionEmparejamientoAsync(CrearSesionEmparejamientoDto dto);
+        Task<Dispositivo> EmparejarDispositivoAsync(EmparejarDispositivoDto dto);
+        Task<object> ObtenerEstadoEmparejamientoAsync(string idSesion, string watchSecret);
+        Task<List<Dispositivo>> ObtenerDispositivosPorPacienteAsync(string? idPaciente);
+        Task<bool> ActualizarAliasAsync(string id, string nuevoAlias);
+        Task<bool> EliminarDispositivoAsync(string id);
+    }
 }
