@@ -37,5 +37,7 @@ namespace BeatWatch_BackEnd.Controllers
             // Devolvemos el DTO completo con status 200 OK
             return Ok(respuesta);
         }
+
+
     }
 }

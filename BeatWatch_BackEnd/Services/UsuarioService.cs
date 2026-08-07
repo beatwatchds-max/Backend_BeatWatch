@@ -1,5 +1,6 @@
 using BCrypt.Net;
 using BeatWatch_BackEnd.Data;
+using BeatWatch_BackEnd.Dtos;
 using BeatWatch_BackEnd.infrescture;
 using BeatWatch_BackEnd.Models;
 using MongoDB.Bson;
@@ -41,7 +42,7 @@ public class UsuarioService : IUsuarioService
 
     public async Task<Usuario> RegistrarAsync(RegistroRequest request)
     {
-        // 1. Verificación mockeable y segura con FirstOrDefaultAsync
+        // 1. Verificación segura de correo existente
         var cursor = await _context.Usuarios.FindAsync(u => u.Correo == request.Correo);
         var existente = await cursor.FirstOrDefaultAsync();
 
@@ -53,10 +54,10 @@ public class UsuarioService : IUsuarioService
         // 2. Cifrado de contraseña
         var hash = BCrypt.Net.BCrypt.HashPassword(request.Contrasena);
 
-        // 3. Generar el token de 9 dígitos para el administrador
+        // 3. Generar token de 9 dígitos
         string nuevoToken = await GenerarTokenNumericoUnicoAsync();
 
-        // 4. Mapear objeto con los datos del formulario de la maqueta
+        // 4. Mapear objeto únicamente con datos de la cuenta
         var nuevoUsuario = new Usuario
         {
             Nombre = request.Nombre,
@@ -64,18 +65,9 @@ public class UsuarioService : IUsuarioService
             Telefono = request.Telefono,
             Contrasena = hash,
             Activo = true,
-
-            // Aquí agregamos los campos solicitados
             Rol = "Administrador",
             TokenMovil = nuevoToken,
             FechaCreacion = DateTime.UtcNow,
-
-            // Mapeo de la sección opcional
-            EmpresaOrganizacion = request.EmpresaOrganizacion,
-            RFC = request.RFC,
-            Direccion = request.Direccion,
-            CiudadEstado = request.CiudadEstado,
-
             Cuidadores = new List<string>()
         };
 
@@ -138,6 +130,7 @@ public class UsuarioService : IUsuarioService
 
     private static string HashToken(string token) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
 
+    // coreccion
     public async Task<ResultadoPaginado<Usuario>> ObtenerUsuariosPaginadosAsync(
       int page,
       int pageSize,
@@ -148,7 +141,7 @@ public class UsuarioService : IUsuarioService
         var builder = Builders<Usuario>.Filter;
         var filtro = builder.Empty;
 
-        // 🟢 1. Si enviaron un idLicencia, resolvemos quiénes pertenecen a esa Licencia
+        // 1. Filtrar exclusivamente los usuarios ligados a la Licencia
         if (!string.IsNullOrWhiteSpace(idLicencia))
         {
             if (!ObjectId.TryParse(idLicencia, out _))
@@ -171,35 +164,39 @@ public class UsuarioService : IUsuarioService
                 };
             }
 
-            // Construir lista con el Titular (UsuarioId) + los UsuariosAsociados
-            var miembrosLicencia = new List<string>();
+            // Obtener IDs de la Licencia (Titular + UsuariosAsociados)
+            var miembrosIds = new List<string>();
 
             if (!string.IsNullOrEmpty(licencia.UsuarioId))
             {
-                miembrosLicencia.Add(licencia.UsuarioId);
+                miembrosIds.Add(licencia.UsuarioId);
             }
 
             if (licencia.UsuariosAsociados != null && licencia.UsuariosAsociados.Any())
             {
-                miembrosLicencia.AddRange(licencia.UsuariosAsociados);
+                miembrosIds.AddRange(licencia.UsuariosAsociados);
             }
 
-            // Filtrar todos los usuarios cuyo _id esté en la lista
-            filtro &= builder.In(u => u.Id, miembrosLicencia);
+            // Filtro combinado: Coincide por el campo IdLicencia del Usuario O por su ID estar dentro del array de la Licencia
+            var filtroLicenciaDirecta = builder.Eq(u => u.IdLicencia, idLicencia);
+            var filtroMiembrosLicencia = builder.In(u => u.Id, miembrosIds);
+
+            filtro &= builder.Or(filtroLicenciaDirecta, filtroMiembrosLicencia);
         }
 
-        // 2. Filtros adicionales de búsqueda
+        // 2. Búsqueda opcional por nombre
         if (!string.IsNullOrWhiteSpace(searchName))
         {
             filtro &= builder.Regex(u => u.Nombre, new BsonRegularExpression(searchName, "i"));
         }
 
+        // 3. Búsqueda opcional por correo
         if (!string.IsNullOrWhiteSpace(searchEmail))
         {
             filtro &= builder.Regex(u => u.Correo, new BsonRegularExpression(searchEmail, "i"));
         }
 
-        // 3. Paginación
+        // 4. Paginación y ejecución
         var totalRegistros = await _context.Usuarios.CountDocumentsAsync(filtro);
         var saltar = (page - 1) * pageSize;
 
@@ -216,6 +213,8 @@ public class UsuarioService : IUsuarioService
             Datos = usuarios
         };
     }
+
+
     public async Task<bool> DesactivarAsync(string id, CancellationToken cancellationToken = default)
     {
         var usuarioId = ValidarObjectId(id, nameof(id));
@@ -276,5 +275,79 @@ public class UsuarioService : IUsuarioService
 
         return id;
     }
+    public async Task<Usuario> RegistrarCuidadorDesdeSesionAsync(RegistrarCuidadorDto request, string adminId)
+    {
+        // 1. Validar correo duplicado
+        var cursorUsuario = await _context.Usuarios.FindAsync(u => u.Correo == request.Correo.Trim().ToLowerInvariant());
+        if (await cursorUsuario.AnyAsync())
+        {
+            throw new InvalidOperationException("El correo ya se encuentra registrado.");
+        }
 
+        // 2. Buscar al Administrador por el ID de su sesión JWT
+        var admin = await _context.Usuarios
+            .Find(u => u.Id == adminId && u.Rol == "Administrador")
+            .FirstOrDefaultAsync();
+
+        if (admin == null || string.IsNullOrEmpty(admin.IdLicencia))
+        {
+            throw new InvalidOperationException("El administrador de la sesión no existe o no tiene una licencia asociada.");
+        }
+
+        // 3. Generar el TokenMovil de 9 dígitos para el cuidador
+        string tokenMovilCuidador = await GenerarTokenNumericoUnicoAsync();
+        var hash = BCrypt.Net.BCrypt.HashPassword(request.Contrasena);
+
+        // 4. Crear el Cuidador con la IdLicencia tomada directamente del Admin
+        var nuevoCuidador = new Usuario
+        {
+            Nombre = request.Nombre,
+            Correo = request.Correo.Trim().ToLowerInvariant(),
+            Telefono = request.Telefono,
+            Contrasena = hash,
+            Activo = true,
+            Rol = "Cuidador",
+            TokenMovil = tokenMovilCuidador,
+            FechaCreacion = DateTime.UtcNow,
+            IdLicencia = admin.IdLicencia // 👈 Copia la Licencia del Administrador autenticado
+        };
+
+        await _context.Usuarios.InsertOneAsync(nuevoCuidador);
+
+        // 5. Vincular al array Cuidadores del Admin y a UsuariosAsociados de la Licencia
+        var updateAdmin = Builders<Usuario>.Update.Push(u => u.Cuidadores, nuevoCuidador.Id!);
+        await _context.Usuarios.UpdateOneAsync(u => u.Id == admin.Id, updateAdmin);
+
+        var filterLicencia = Builders<Licencia>.Filter.Eq(l => l.Id, admin.IdLicencia);
+        var updateLicencia = Builders<Licencia>.Update.Push(l => l.UsuariosAsociados, nuevoCuidador.Id!);
+        await _context.Licencias.UpdateOneAsync(filterLicencia, updateLicencia);
+
+        return nuevoCuidador;
+    }
+    public async Task<List<CuidadorOpcionDto>> ObtenerCuidadoresYAdminsPorLicenciaAsync(string idLicencia)
+    {
+        if (string.IsNullOrWhiteSpace(idLicencia) || !ObjectId.TryParse(idLicencia, out _))
+        {
+            throw new ArgumentException("El identificador de la licencia no tiene un formato válido.");
+        }
+
+        // Filtro: Misma licencia y Rol en ("Administrador", "Cuidador")
+        var filterBuilder = Builders<Usuario>.Filter;
+        var filtro = filterBuilder.Eq(u => u.IdLicencia, idLicencia) &
+                     filterBuilder.In(u => u.Rol, new[] { "Administrador", "Cuidador" }) &
+                     filterBuilder.Eq(u => u.Activo, true);
+
+        var usuarios = await _context.Usuarios
+            .Find(filtro)
+            .Project(u => new CuidadorOpcionDto
+            {
+                Id = u.Id!,
+                Nombre = u.Nombre,
+                Correo = u.Correo,
+                Rol = u.Rol
+            })
+            .ToListAsync();
+
+        return usuarios;
+    }
 }

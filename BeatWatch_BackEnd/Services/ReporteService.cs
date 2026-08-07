@@ -74,11 +74,6 @@ namespace BeatWatch_BackEnd.Services
                 document.Add(new Paragraph($"Nombre Completo: {(usuario != null ? usuario.Nombre : "Cliente BeatWatch Ext")}"));
                 document.Add(new Paragraph($"Correo Electrónico: {(usuario != null ? usuario.Correo : "N/D")}"));
 
-                if (usuario != null && !string.IsNullOrEmpty(usuario.EmpresaOrganizacion))
-                {
-                    document.Add(new Paragraph($"Empresa: {usuario.EmpresaOrganizacion}"));
-                    document.Add(new Paragraph($"RFC: {usuario.RFC}"));
-                }
 
                 document.Add(new Paragraph(new string('-', 80)));
 

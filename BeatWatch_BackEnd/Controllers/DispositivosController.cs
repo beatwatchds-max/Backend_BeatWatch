@@ -138,5 +138,26 @@ namespace BeatWatch_BackEnd.Controllers
                 return BadRequest(new { mensaje = ex.Message });
             }
         }
+        // 🟢 PATCH /api/Dispositivos/{id}/metricas
+        [Authorize]
+        [HttpPatch("{id}/metricas")]
+        public async Task<IActionResult> ActualizarMetricas(string id, [FromBody] ActualizarMetricasWearableDto dto)
+        {
+            try
+            {
+                var actualizado = await _dispositivoService.ActualizarMetricasAsync(id, dto);
+
+                if (!actualizado)
+                {
+                    return NotFound(new { mensaje = $"No se encontró el dispositivo con el ID '{id}'." });
+                }
+
+                return Ok(new { mensaje = "Métricas actualizadas correctamente." });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { mensaje = ex.Message });
+            }
+        }
     }
 }

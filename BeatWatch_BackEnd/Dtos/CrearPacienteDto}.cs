@@ -4,7 +4,9 @@
     {
         public string NombreCompleto { get; set; } = null!;
         public string Correo { get; set; } = null!;
-        public string? Telefono { get; set; } // Opcional según la maqueta
+        public string? Telefono { get; set; }
 
+   
+        public List<string> CuidadoresIds { get; set; } = new();
     }
 }

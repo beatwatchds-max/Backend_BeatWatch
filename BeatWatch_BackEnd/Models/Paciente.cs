@@ -8,6 +8,7 @@ namespace BeatWatch_BackEnd.Models
         [BsonId]
         [BsonRepresentation(BsonType.ObjectId)]
         public string? Id { get; set; }
+
         [BsonElement("UsuarioId")]
         [BsonRepresentation(BsonType.ObjectId)]
         public string UsuarioId { get; set; } = null!;
@@ -29,14 +30,21 @@ namespace BeatWatch_BackEnd.Models
 
         [BsonElement("TipoSangre")]
         public string TipoSangre { get; set; } = null!;
+
         [BsonElement("FechaNacimiento")]
         public DateTime FechaNacimiento { get; set; }
+
         [BsonElement("Direccion")]
         public string Direccion { get; set; } = null!;
 
         [BsonElement("IdLicencia")]
         [BsonRepresentation(BsonType.ObjectId)]
         public string? IdLicencia { get; set; }
+
+        // 🟢 Lista de IDs de los Cuidadores / Administradores asignados
+        [BsonElement("Cuidadores")]
+        [BsonRepresentation(BsonType.ObjectId)]
+        public List<string> Cuidadores { get; set; } = new();
 
         [BsonElement("Fotografia")]
         public byte[]? Fotografia { get; set; }

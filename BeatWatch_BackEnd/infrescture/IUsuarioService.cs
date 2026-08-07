@@ -1,3 +1,4 @@
+using BeatWatch_BackEnd.Dtos;
 using BeatWatch_BackEnd.Models;
 
 namespace BeatWatch_BackEnd.infrescture
@@ -13,5 +14,8 @@ public interface IUsuarioService
     Task<bool> DesactivarAsync(string id, CancellationToken cancellationToken = default);
     Task<bool> ActualizarCuidadoresAsync(string id, IReadOnlyCollection<string> cuidadores, CancellationToken cancellationToken = default);
     Task<bool> DesvincularCuidadorAsync(string id, string cuidadorId, CancellationToken cancellationToken = default);
+
+        Task<Usuario> RegistrarCuidadorDesdeSesionAsync(RegistrarCuidadorDto request, string adminId);
+        Task<List<CuidadorOpcionDto>> ObtenerCuidadoresYAdminsPorLicenciaAsync(string idLicencia);
     }
 }

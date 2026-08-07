@@ -17,5 +17,8 @@
         public string? Direccion { get; set; }
         public string TipoSangre { get; set; } = null!;
         public string? Fotografia { get; set; }
+
+        // 🟢 Lista opcional de IDs de Cuidadores asignados al Paciente
+        public List<string> CuidadoresIds { get; set; } = new();
     }
 }
