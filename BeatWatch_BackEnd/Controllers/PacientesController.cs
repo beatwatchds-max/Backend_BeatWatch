@@ -158,7 +158,7 @@ namespace BeatWatch_BackEnd.Controllers
                     pacienteId = paciente.Id,
                     tokenMovil = usuario.TokenMovil,
                     idLicencia = usuario.IdLicencia,
-                    cuidadores = paciente.Cuidadores
+                    cuidadores = usuario.Cuidadores
                 });
             }
             catch (ArgumentException ex)

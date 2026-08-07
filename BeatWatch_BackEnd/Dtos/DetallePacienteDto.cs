@@ -27,10 +27,9 @@
         public string? IdLicencia { get; set; }
         public byte[]? Fotografia { get; set; }
 
-        // 🟢 Cuidadores asignados
+        // 🟢 Asegúrate de que esta propiedad NO esté comentada
         public List<CuidadorInfoDto> Cuidadores { get; set; } = new();
 
-        // 🟢 Arritmias / Condiciones registradas
         public List<object> CondicionesArritmias { get; set; } = new();
     }
 }
