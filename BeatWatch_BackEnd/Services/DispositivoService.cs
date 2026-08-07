@@ -101,8 +101,8 @@ namespace BeatWatch_BackEnd.Services
                 Activo = true,
                 MetricasWearable = new MetricasWearableDto
                 {
-                    FrecuenciaCardiacaBpm = 72,
-                    SaturacionOxigenoSpO2 = 98,
+                    FrecuenciaCardiacaBpm = 0,
+                    SaturacionOxigenoSpO2 = 0,
                     Pasos = 0
                 }
             };
@@ -221,6 +221,25 @@ namespace BeatWatch_BackEnd.Services
             var filter = Builders<Dispositivo>.Filter.Eq(d => d.Id, id);
             var result = await _context.Dispositivos.DeleteOneAsync(filter);
             return result.DeletedCount > 0;
+        }
+        public async Task<bool> ActualizarMetricasAsync(string idDispositivo, ActualizarMetricasWearableDto dto)
+        {
+            if (!ObjectId.TryParse(idDispositivo, out _))
+            {
+                throw new ArgumentException("El identificador del dispositivo no tiene un formato válido.");
+            }
+
+            var filter = Builders<Dispositivo>.Filter.Eq(d => d.Id, idDispositivo);
+
+            var update = Builders<Dispositivo>.Update
+                .Set(d => d.MetricasWearable.FrecuenciaCardiacaBpm, dto.FrecuenciaCardiacaBpm)
+                .Set(d => d.MetricasWearable.SaturacionOxigenoSpO2, dto.SaturacionOxigenoSpO2)
+                .Set(d => d.MetricasWearable.Pasos, dto.Pasos)
+                .Set(d => d.UltimaSincronizacion, DateTime.UtcNow);
+
+            var result = await _context.Dispositivos.UpdateOneAsync(filter, update);
+
+            return result.MatchedCount > 0;
         }
     }
 }

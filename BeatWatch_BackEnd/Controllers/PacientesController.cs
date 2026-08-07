@@ -78,37 +78,35 @@ namespace BeatWatch_BackEnd.Controllers
         [Authorize]
         public async Task<IActionResult> ObtenerPerfilPorUsuarioId(string usuarioId)
         {
-            // Extraer el UsuarioId del Token JWT cargado en los Claims
-            var usuarioIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-            // Validar seguridad: Solo el propio usuario (o un admin) puede consultar su perfil
-            if (usuarioIdClaim != usuarioId && !User.IsInRole("Admin") && !User.IsInRole("Cuidador"))
+            try
             {
-                return Forbid(); // 403 Forbidden si intenta acceder a datos de otro usuario
+                // Extraer el UsuarioId del Token JWT
+                var usuarioIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                                  ?? User.FindFirst("sub")?.Value;
+
+                // Validar seguridad: Solo el propio usuario, un Admin o un Cuidador pueden consultar el perfil
+                if (usuarioIdClaim != usuarioId && !User.IsInRole("Administrador") && !User.IsInRole("Cuidador"))
+                {
+                    return Forbid();
+                }
+
+                var detallePaciente = await _pacienteService.ObtenerDetallePorUsuarioIdAsync(usuarioId);
+
+                if (detallePaciente == null)
+                {
+                    return NotFound(new { mensaje = "El perfil del paciente aún no ha sido registrado." });
+                }
+
+                return Ok(detallePaciente);
             }
-
-            var paciente = await _pacienteService.ObtenerPorUsuarioIdAsync(usuarioId);
-
-            if (paciente == null)
+            catch (ArgumentException ex)
             {
-                return NotFound(new { mensaje = "El perfil del paciente aún no ha sido registrado." });
+                return BadRequest(new { mensaje = ex.Message });
             }
-
-            return Ok(new
+            catch (Exception ex)
             {
-                pacienteId = paciente.Id,
-                usuarioId = paciente.UsuarioId,
-                curp = paciente.CURP,
-                edad = paciente.Edad,
-                sexo = paciente.Sexo,
-                peso = paciente.Peso,
-                estatura = paciente.Estatura,
-                fechaNacimiento = paciente.FechaNacimiento,
-                direccion = paciente.Direccion,
-                tipoSangre = paciente.TipoSangre,
-                idLicencia = paciente.IdLicencia,
-                fotografia = paciente.Fotografia
-            });
+                return StatusCode(500, new { mensaje = "Error al obtener el perfil del paciente.", detalle = ex.Message });
+            }
         }
 
         [HttpPatch("perfil/{usuarioId}")]
@@ -132,7 +130,7 @@ namespace BeatWatch_BackEnd.Controllers
         {
             try
             {
-                // Extracción limpia del Claim de Licencia
+                // 1. Extracción de la IdLicencia desde los claims del token JWT
                 var idLicenciaClaim = User.FindFirst("idLicencia")?.Value
                                     ?? User.FindFirst("LicenciaId")?.Value;
 
@@ -141,15 +139,26 @@ namespace BeatWatch_BackEnd.Controllers
                     return BadRequest(new { mensaje = "No se encontró el identificador de la licencia en la sesión actual." });
                 }
 
+                // 2. Extraer el ID del usuario logueado (Admin/Cuidador) de la sesión
+                var usuarioSesionId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                                    ?? User.FindFirst("sub")?.Value;
+
+                // 3. Si la lista viene vacía en el DTO, auto-asignamos el usuario de la sesión activa
+                if ((dto.CuidadoresIds == null || !dto.CuidadoresIds.Any()) && !string.IsNullOrEmpty(usuarioSesionId))
+                {
+                    dto.CuidadoresIds = new List<string> { usuarioSesionId };
+                }
+
                 var (usuario, paciente) = await _pacienteService.RegistrarPacienteCompletoAsync(dto, idLicenciaClaim);
 
                 return StatusCode(StatusCodes.Status201Created, new
                 {
-                    mensaje = "Paciente y perfil registrados exitosamente.",
+                    mensaje = "Paciente y perfil registrados exitosamente con sus cuidadores asignados.",
                     usuarioId = usuario.Id,
                     pacienteId = paciente.Id,
                     tokenMovil = usuario.TokenMovil,
-                    idLicencia = usuario.IdLicencia
+                    idLicencia = usuario.IdLicencia,
+                    cuidadores = paciente.Cuidadores
                 });
             }
             catch (ArgumentException ex)

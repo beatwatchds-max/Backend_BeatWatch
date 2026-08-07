@@ -41,7 +41,7 @@ namespace BeatWatch_BackEnd.Services
 
         public async Task<Usuario> RegistrarPacienteAsync(CrearPacienteDto pacienteDto, string idLicencia)
         {
-            // 1. Validar que la licencia exista y esté activa
+            // 1. Validar la Licencia
             if (string.IsNullOrWhiteSpace(idLicencia) || !ObjectId.TryParse(idLicencia, out _))
             {
                 throw new ArgumentException("La licencia del usuario autenticado no es válida.");
@@ -56,32 +56,44 @@ namespace BeatWatch_BackEnd.Services
                 throw new ArgumentException("La licencia especificada no existe o no se encuentra activa.");
             }
 
-            // 2. Generar el token único de 9 dígitos
+            // 2. Generar TokenMovil único
             string nuevoToken = await GenerarTokenNumericoUnicoAsync();
 
-            // 3. Crear el objeto Usuario (Paciente)
-            var nuevoPaciente = new Usuario
+            // 3. Validar los Cuidadores provistos
+            var cuidadoresValidos = new List<string>();
+            if (pacienteDto.CuidadoresIds != null && pacienteDto.CuidadoresIds.Any())
+            {
+                foreach (var cId in pacienteDto.CuidadoresIds)
+                {
+                    if (ObjectId.TryParse(cId, out _))
+                    {
+                        cuidadoresValidos.Add(cId);
+                    }
+                }
+            }
+
+            // 4. Crear el Usuario del Paciente guardando la lista de cuidadores
+            var nuevoPacienteUsuario = new Usuario
             {
                 Nombre = pacienteDto.NombreCompleto,
-                Correo = pacienteDto.Correo,
+                Correo = pacienteDto.Correo.Trim().ToLowerInvariant(),
                 Telefono = pacienteDto.Telefono ?? string.Empty,
                 Rol = "Paciente",
                 TokenMovil = nuevoToken,
                 Activo = true,
                 FechaCreacion = DateTime.UtcNow,
-                IdLicencia = idLicencia
+                IdLicencia = idLicencia,
+                Cuidadores = cuidadoresValidos // 👈 Guardamos la relación de cuidadores
             };
 
-            // 4. Insertar el Usuario en MongoDB
-            await _context.Usuarios.InsertOneAsync(nuevoPaciente);
+            await _context.Usuarios.InsertOneAsync(nuevoPacienteUsuario);
 
-            // 5. Vincular el ID del nuevo paciente a la lista de UsuariosAsociados de la Licencia
+            // 5. Vincular a UsuariosAsociados de la Licencia
             var filterLicencia = Builders<Licencia>.Filter.Eq(l => l.Id, idLicencia);
-            var updateLicencia = Builders<Licencia>.Update.Push(l => l.UsuariosAsociados, nuevoPaciente.Id);
-
+            var updateLicencia = Builders<Licencia>.Update.Push(l => l.UsuariosAsociados, nuevoPacienteUsuario.Id);
             await _context.Licencias.UpdateOneAsync(filterLicencia, updateLicencia);
 
-            return nuevoPaciente;
+            return nuevoPacienteUsuario;
         }
         public async Task<Paciente> CrearPerfilAsync(CrearPerfilPacienteDto perfilDto)
         {
@@ -138,12 +150,88 @@ namespace BeatWatch_BackEnd.Services
             return paciente;
         }
 
-        public async Task<Paciente?> ObtenerPorUsuarioIdAsync(string usuarioId)
+        public async Task<DetallePacienteResponseDto?> ObtenerDetallePorUsuarioIdAsync(string usuarioId)
         {
-            return await _context.Pacientes
+            if (!ObjectId.TryParse(usuarioId, out _))
+            {
+                throw new ArgumentException("El identificador de usuario no es válido.");
+            }
+
+            // 1. Obtener la entidad Paciente por UsuarioId
+            var paciente = await _context.Pacientes
                 .Find(p => p.UsuarioId == usuarioId)
                 .FirstOrDefaultAsync();
+
+            if (paciente == null) return null;
+
+            // 2. Obtener la cuenta base de Usuario (donde reside Cuidadores, Nombre, Correo, Telefono)
+            var usuarioCuenta = await _context.Usuarios
+                .Find(u => u.Id == usuarioId)
+                .FirstOrDefaultAsync();
+
+            // 3. Unificar los IDs de Cuidadores (priorizando los de la entidad Usuario)
+            var cuidadoresIds = new List<string>();
+
+            if (usuarioCuenta?.Cuidadores != null && usuarioCuenta.Cuidadores.Any())
+            {
+                cuidadoresIds.AddRange(usuarioCuenta.Cuidadores);
+            }
+
+            if (paciente.Cuidadores != null && paciente.Cuidadores.Any())
+            {
+                cuidadoresIds.AddRange(paciente.Cuidadores);
+            }
+
+            // Eliminar duplicados
+            cuidadoresIds = cuidadoresIds.Distinct().ToList();
+
+            // 4. Consultar la información de los Cuidadores/Admins asignados
+            var cuidadoresList = new List<CuidadorInfoDto>();
+            if (cuidadoresIds.Any())
+            {
+                var filterCuidadores = Builders<Usuario>.Filter.In(u => u.Id, cuidadoresIds);
+                cuidadoresList = await _context.Usuarios
+                    .Find(filterCuidadores)
+                    .Project(u => new CuidadorInfoDto
+                    {
+                        //Id = u.Id!,
+                        Nombre = u.Nombre
+                        //Correo = u.Correo,
+                        //Telefono = u.Telefono,
+                        //Rol = u.Rol
+                    })
+                    .ToListAsync();
+            }
+
+            // 5. Consultar las Arritmias / Condiciones asociadas al paciente
+            var arritmias = await _context.Arritmias
+                .Find(a => a.IdPaciente == paciente.Id)
+                .ToListAsync();
+
+            // 6. Mapeo final
+            return new DetallePacienteResponseDto
+            {
+                PacienteId = paciente.Id!,
+                UsuarioId = paciente.UsuarioId,
+                NombreCompleto = usuarioCuenta?.Nombre ?? string.Empty,
+                Correo = usuarioCuenta?.Correo ?? string.Empty,
+                Telefono = usuarioCuenta?.Telefono ?? string.Empty,
+                CURP = paciente.CURP,
+                Edad = paciente.Edad,
+                Sexo = paciente.Sexo,
+                Peso = paciente.Peso,
+                Estatura = paciente.Estatura,
+                FechaNacimiento = paciente.FechaNacimiento,
+                Direccion = paciente.Direccion,
+                TipoSangre = paciente.TipoSangre,
+                IdLicencia = paciente.IdLicencia,
+                Fotografia = paciente.Fotografia,
+                Cuidadores = cuidadoresList,
+                CondicionesArritmias = arritmias.Cast<object>().ToList()
+            };
         }
+
+
         public async Task<bool> ActualizarPerfilPacienteAsync(string usuarioId, ActualizarPerfilPacienteDto dto)
         {
             // 1. Buscamos si existe el paciente por UsuarioId
@@ -213,8 +301,8 @@ namespace BeatWatch_BackEnd.Services
         }
 
         public async Task<(Usuario Usuario, Paciente Paciente)> RegistrarPacienteCompletoAsync(
-    RegistrarPacienteCompletoDto dto,
-    string idLicencia)
+       RegistrarPacienteCompletoDto dto,
+       string idLicencia)
         {
             var curp = dto.CURP.Trim().ToUpperInvariant();
             var tipoSangre = dto.TipoSangre.Trim().ToUpperInvariant();
@@ -240,10 +328,23 @@ namespace BeatWatch_BackEnd.Services
                 throw new InvalidOperationException("Ya existe un paciente registrado con esta CURP.");
             }
 
-            // 3. Generar Token Único de 9 dígitos para la app móvil
+            // 3. Validar y filtrar formato de los IDs de Cuidadores recibidos
+            var cuidadoresValidos = new List<string>();
+            if (dto.CuidadoresIds != null && dto.CuidadoresIds.Any())
+            {
+                foreach (var cId in dto.CuidadoresIds)
+                {
+                    if (ObjectId.TryParse(cId, out _))
+                    {
+                        cuidadoresValidos.Add(cId);
+                    }
+                }
+            }
+
+            // 4. Generar Token Único de 9 dígitos para la app móvil
             string tokenMovil = await GenerarTokenNumericoUnicoAsync();
 
-            // 4. Crear e insertar entidad Usuario
+            // 5. Crear e insertar entidad Usuario
             var nuevoUsuario = new Usuario
             {
                 Nombre = dto.NombreCompleto,
@@ -253,22 +354,23 @@ namespace BeatWatch_BackEnd.Services
                 TokenMovil = tokenMovil,
                 Activo = true,
                 FechaCreacion = DateTime.UtcNow,
-                IdLicencia = idLicencia
+                IdLicencia = idLicencia,
+                Cuidadores = cuidadoresValidos // 👈 Guardamos los cuidadores en la cuenta Usuario
             };
 
             await _context.Usuarios.InsertOneAsync(nuevoUsuario);
 
-            // 5. Vincular el Usuario a la Licencia
+            // 6. Vincular el Usuario a la Licencia
             var filterLicencia = Builders<Licencia>.Filter.Eq(l => l.Id, idLicencia);
             var updateLicencia = Builders<Licencia>.Update.Push(l => l.UsuariosAsociados, nuevoUsuario.Id);
             await _context.Licencias.UpdateOneAsync(filterLicencia, updateLicencia);
 
-            // 6. Convertir Fotografía (si aplica Base64)
+            // 7. Convertir Fotografía (si aplica Base64)
             byte[]? fotoBytes = !string.IsNullOrEmpty(dto.Fotografia)
                 ? Convert.FromBase64String(dto.Fotografia)
                 : null;
 
-            // 7. Crear e insertar entidad Paciente
+            // 8. Crear e insertar entidad Paciente con su lista de Cuidadores
             var nuevoPaciente = new Paciente
             {
                 UsuarioId = nuevoUsuario.Id,
@@ -279,6 +381,7 @@ namespace BeatWatch_BackEnd.Services
                 Estatura = dto.Estatura,
                 TipoSangre = tipoSangre,
                 IdLicencia = idLicencia,
+                Cuidadores = cuidadoresValidos, // 👈 Se guarda la lista relacional en la entidad Paciente
                 Fotografia = fotoBytes,
                 FechaNacimiento = dto.FechaNacimiento,
                 Direccion = dto.Direccion
