@@ -16,60 +16,167 @@ namespace BeatWatch_BackEnd.Services
             _context = context;
         }
 
+        public async Task<SesionEmparejamientoResponseDto> CrearSesionEmparejamientoAsync(CrearSesionEmparejamientoDto dto)
+        {
+            var idSesion = Guid.NewGuid().ToString("D");
+            var tokenEmparejamiento = Guid.NewGuid().ToString("N");
+            var watchSecret = Guid.NewGuid().ToString("N");
+            var expiraEn = DateTime.UtcNow.AddMinutes(2); // Expira en 2 minutos
+
+            var nuevaSesion = new SesionEmparejamiento
+            {
+                IdSesion = idSesion,
+                TokenEmparejamiento = tokenEmparejamiento,
+                WatchSecret = watchSecret,
+                Estado = "PENDIENTE",
+                NumeroSerie = dto.NumeroSerie.Trim().ToUpperInvariant(),
+                Alias = dto.Alias?.Trim() ?? "Galaxy Watch",
+                TipoDispositivo = dto.TipoDispositivo,
+                CodigoModelo = dto.CodigoModelo,
+                CodigoDispositivo = dto.CodigoDispositivo,
+                SistemaOperativo = dto.SistemaOperativo,
+                VersionAplicacion = dto.VersionAplicacion,
+                FechaCreacion = DateTime.UtcNow,
+                FechaExpiracion = expiraEn
+            };
+
+            await _context.SesionesEmparejamiento.InsertOneAsync(nuevaSesion);
+
+            return new SesionEmparejamientoResponseDto
+            {
+                IdSesion = idSesion,
+                TokenEmparejamiento = tokenEmparejamiento,
+                WatchSecret = watchSecret,
+                ExpiraEn = expiraEn
+            };
+        }
+
+        // 2. POST /api/Dispositivos/emparejar (Teléfono/Móvil escanea el QR)
         public async Task<Dispositivo> EmparejarDispositivoAsync(EmparejarDispositivoDto dto)
         {
-            var numeroSerieNormalizado = dto.NumeroSerie.Trim().ToUpperInvariant();
-
             if (!ObjectId.TryParse(dto.IdPaciente, out _))
             {
                 throw new ArgumentException("El identificador del paciente no tiene un formato válido.");
             }
 
-            var existe = await _context.Dispositivos
-                .Find(d => d.NumeroSerie == numeroSerieNormalizado)
-                .AnyAsync();
+            // Buscar la sesión activa
+            var sesion = await _context.SesionesEmparejamiento
+                .Find(s => s.IdSesion == dto.IdSesion && s.TokenEmparejamiento == dto.TokenEmparejamiento)
+                .FirstOrDefaultAsync();
 
-            if (existe)
+            if (sesion == null)
             {
-                throw new InvalidOperationException("El número de serie ya está registrado por otro usuario.");
+                throw new ArgumentException("La sesión o token de emparejamiento no existen.");
             }
 
+            if (sesion.FechaExpiracion < DateTime.UtcNow)
+            {
+                var updateExpirado = Builders<SesionEmparejamiento>.Update.Set(s => s.Estado, "EXPIRADO");
+                await _context.SesionesEmparejamiento.UpdateOneAsync(s => s.Id == sesion.Id, updateExpirado);
+                throw new InvalidOperationException("La sesión de emparejamiento ha expirado.");
+            }
+
+            // Verificar si el número de serie ya está registrado en dispositivos activos
+            var existeDispositivo = await _context.Dispositivos
+                .Find(d => d.NumeroSerie == sesion.NumeroSerie && d.Activo)
+                .AnyAsync();
+
+            if (existeDispositivo)
+            {
+                throw new InvalidOperationException("El dispositivo ya se encuentra emparejado.");
+            }
+
+            // Crear el registro oficial del dispositivo
             var nuevoDispositivo = new Dispositivo
             {
-                NumeroSerie = numeroSerieNormalizado,
-                Alias = dto.Alias.Trim(),
-                TipoDispositivo = dto.TipoDispositivo,
-                CodigoModelo = dto.CodigoModelo,
-                CodigoDispositivo = dto.CodigoDispositivo,
-                SistemaOperativo = dto.SistemaOperativo,
+                NumeroSerie = sesion.NumeroSerie,
+                Alias = !string.IsNullOrWhiteSpace(dto.Alias) ? dto.Alias.Trim() : sesion.Alias,
+                TipoDispositivo = sesion.TipoDispositivo,
+                CodigoModelo = sesion.CodigoModelo,
+                CodigoDispositivo = sesion.CodigoDispositivo,
+                SistemaOperativo = sesion.SistemaOperativo,
                 IdPaciente = dto.IdPaciente,
                 FechaRegistro = DateTime.UtcNow,
                 UltimaSincronizacion = DateTime.UtcNow,
-                Activo = true
+                Activo = true,
+                MetricasWearable = new MetricasWearableDto
+                {
+                    FrecuenciaCardiacaBpm = 0,
+                    SaturacionOxigenoSpO2 = 0,
+                    Pasos = 0
+                }
             };
 
-            // Inicializamos las métricas dummy de acuerdo al tipo
-            if (dto.TipoDispositivo.Equals("Smartphone", StringComparison.OrdinalIgnoreCase))
+            await _context.Dispositivos.InsertOneAsync(nuevoDispositivo);
+
+            // Generar tokens dummy para el reloj
+            string accessToken = $"WATCH_ACCESS_{Guid.NewGuid():N}";
+            string refreshToken = $"WATCH_REFRESH_{Guid.NewGuid():N}";
+
+            // Actualizar la sesión a EMPAREJADO para responderle al polling del reloj
+            var updateEmparejado = Builders<SesionEmparejamiento>.Update
+                .Set(s => s.Estado, "EMPAREJADO")
+                .Set(s => s.IdDispositivo, nuevoDispositivo.Id)
+                .Set(s => s.AccessToken, accessToken)
+                .Set(s => s.RefreshToken, refreshToken);
+
+            await _context.SesionesEmparejamiento.UpdateOneAsync(s => s.Id == sesion.Id, updateEmparejado);
+
+            return nuevoDispositivo;
+        }
+
+        // 3. GET /api/Dispositivos/emparejamiento/{idSesion}/estado
+        public async Task<object> ObtenerEstadoEmparejamientoAsync(string idSesion, string watchSecret)
+        {
+            var sesion = await _context.SesionesEmparejamiento
+                .Find(s => s.IdSesion == idSesion)
+                .FirstOrDefaultAsync();
+
+            if (sesion == null || sesion.WatchSecret != watchSecret)
             {
-                nuevoDispositivo.MetricasSmartphone = new MetricasSmartphoneDto
-                {
-                    VersionApp = "BITWATCH v2.2",
-                    EstadoNotificaciones = "Activas",
-                    EstadoGps = "Activo"
-                };
-            }
-            else
-            {
-                nuevoDispositivo.MetricasWearable = new MetricasWearableDto
-                {
-                    FrecuenciaCardiacaBpm = 72,
-                    SaturacionOxigenoSpO2 = 98,
-                    Pasos = 4230
-                };
+                throw new UnauthorizedAccessException("Credenciales de sesión o secreto no válidos.");
             }
 
-            await _context.Dispositivos.InsertOneAsync(nuevoDispositivo);
-            return nuevoDispositivo;
+            // Comprobar si ya expiró
+            if (sesion.Estado == "PENDIENTE" && sesion.FechaExpiracion < DateTime.UtcNow)
+            {
+                var updateExpirado = Builders<SesionEmparejamiento>.Update.Set(s => s.Estado, "EXPIRADO");
+                await _context.SesionesEmparejamiento.UpdateOneAsync(s => s.Id == sesion.Id, updateExpirado);
+                sesion.Estado = "EXPIRADO";
+            }
+
+            return sesion.Estado switch
+            {
+                "PENDIENTE" => new
+                {
+                    success = true,
+                    estado = "PENDIENTE",
+                    idSesion = sesion.IdSesion,
+                    expiraEn = sesion.FechaExpiracion.ToString("yyyy-MM-ddTHH:mm:ssZ")
+                },
+                "EMPAREJADO" => new
+                {
+                    success = true,
+                    estado = "EMPAREJADO",
+                    idDispositivo = sesion.IdDispositivo,
+                    codigoDispositivo = sesion.CodigoDispositivo,
+                    accessToken = sesion.AccessToken,
+                    refreshToken = sesion.RefreshToken,
+                    accessTokenExpiraEn = DateTime.UtcNow.AddDays(30).ToString("yyyy-MM-ddTHH:mm:ssZ")
+                },
+                "EXPIRADO" => new
+                {
+                    success = false,
+                    estado = "EXPIRADO",
+                    message = "La sesión de emparejamiento venció"
+                },
+                _ => new
+                {
+                    success = false,
+                    estado = sesion.Estado,
+                    message = "La sesión fue anulada o cancelada"
+                }
+            };
         }
 
         public async Task<List<Dispositivo>> ObtenerDispositivosPorPacienteAsync(string? idPaciente)
@@ -87,14 +194,11 @@ namespace BeatWatch_BackEnd.Services
                 filter = filterBuilder.Eq(d => d.IdPaciente, idPaciente);
             }
 
-            return await _context.Dispositivos
-                .Find(filter)
-                .ToListAsync();
+            return await _context.Dispositivos.Find(filter).ToListAsync();
         }
 
         public async Task<bool> ActualizarAliasAsync(string id, string nuevoAlias)
         {
-            // Validar que el ID de MongoDB tenga un formato correcto
             if (!ObjectId.TryParse(id, out _))
             {
                 throw new ArgumentException("El identificador del dispositivo no tiene un formato válido.");
@@ -104,14 +208,11 @@ namespace BeatWatch_BackEnd.Services
             var update = Builders<Dispositivo>.Update.Set(d => d.Alias, nuevoAlias.Trim());
 
             var result = await _context.Dispositivos.UpdateOneAsync(filter, update);
-
-            // Retorna true si encontró el documento y lo actualizó
             return result.MatchedCount > 0;
         }
 
         public async Task<bool> EliminarDispositivoAsync(string id)
         {
-            // Validar formato del ObjectId de MongoDB
             if (!ObjectId.TryParse(id, out _))
             {
                 throw new ArgumentException("El identificador del dispositivo no tiene un formato válido.");
@@ -119,9 +220,26 @@ namespace BeatWatch_BackEnd.Services
 
             var filter = Builders<Dispositivo>.Filter.Eq(d => d.Id, id);
             var result = await _context.Dispositivos.DeleteOneAsync(filter);
-
-            // Retorna true si encontró y eliminó el documento
             return result.DeletedCount > 0;
+        }
+        public async Task<bool> ActualizarMetricasAsync(string idDispositivo, ActualizarMetricasWearableDto dto)
+        {
+            if (!ObjectId.TryParse(idDispositivo, out _))
+            {
+                throw new ArgumentException("El identificador del dispositivo no tiene un formato válido.");
+            }
+
+            var filter = Builders<Dispositivo>.Filter.Eq(d => d.Id, idDispositivo);
+
+            var update = Builders<Dispositivo>.Update
+                .Set(d => d.MetricasWearable.FrecuenciaCardiacaBpm, dto.FrecuenciaCardiacaBpm)
+                .Set(d => d.MetricasWearable.SaturacionOxigenoSpO2, dto.SaturacionOxigenoSpO2)
+                .Set(d => d.MetricasWearable.Pasos, dto.Pasos)
+                .Set(d => d.UltimaSincronizacion, DateTime.UtcNow);
+
+            var result = await _context.Dispositivos.UpdateOneAsync(filter, update);
+
+            return result.MatchedCount > 0;
         }
     }
 }

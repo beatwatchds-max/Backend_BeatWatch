@@ -8,7 +8,6 @@ namespace BeatWatch_BackEnd.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize]
     public class DispositivosController : ControllerBase
     {
         private readonly IDispositivoService _dispositivoService;
@@ -18,6 +17,24 @@ namespace BeatWatch_BackEnd.Controllers
             _dispositivoService = dispositivoService;
         }
 
+        // 🟢 1. Endpoint llamado por el Reloj para iniciar la sesión QR
+        [AllowAnonymous]
+        [HttpPost("sesion-emparejamiento")]
+        public async Task<IActionResult> CrearSesionEmparejamiento([FromBody] CrearSesionEmparejamientoDto dto)
+        {
+            try
+            {
+                var response = await _dispositivoService.CrearSesionEmparejamientoAsync(dto);
+                return StatusCode(StatusCodes.Status201Created, response);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { mensaje = ex.Message });
+            }
+        }
+
+        // 🟢 2. Endpoint llamado por el Teléfono al escanear el QR
+        [Authorize]
         [HttpPost("emparejar")]
         public async Task<IActionResult> Emparejar([FromBody] EmparejarDispositivoDto dto)
         {
@@ -28,7 +45,6 @@ namespace BeatWatch_BackEnd.Controllers
             }
             catch (InvalidOperationException ex)
             {
-                // Criterio de Aceptación: 400 Bad Request si el NumeroSerie ya existeAA
                 return BadRequest(new { mensaje = ex.Message });
             }
             catch (ArgumentException ex)
@@ -37,6 +53,36 @@ namespace BeatWatch_BackEnd.Controllers
             }
         }
 
+        // 🟢 3. Endpoint consultado (Polling) por el Reloj para validar si se emparejó
+        [AllowAnonymous]
+        [HttpGet("emparejamiento/{idSesion}/estado")]
+        public async Task<IActionResult> ObtenerEstadoEmparejamiento(
+            string idSesion,
+            [FromHeader(Name = "X-Watch-Secret")] string watchSecret)
+        {
+            try
+            {
+                var resultado = await _dispositivoService.ObtenerEstadoEmparejamientoAsync(idSesion, watchSecret);
+
+                // Si la sesión venció, responder 410 Gone según especificación
+                if (resultado is { } r && r.GetType().GetProperty("estado")?.GetValue(r)?.ToString() == "EXPIRADO")
+                {
+                    return StatusCode(StatusCodes.Status410Gone, resultado);
+                }
+
+                return Ok(resultado);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { success = false, mensaje = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, mensaje = ex.Message });
+            }
+        }
+
+        [Authorize]
         [HttpGet]
         public async Task<IActionResult> ObtenerDispositivos([FromQuery] string? idPaciente)
         {
@@ -51,7 +97,7 @@ namespace BeatWatch_BackEnd.Controllers
             }
         }
 
-        // 🟢 HU3.3: Endpoint para actualizar el Alias de un Dispositivo
+        [Authorize]
         [HttpPut("{id}")]
         public async Task<IActionResult> ActualizarAlias(string id, [FromBody] ActualizarAliasDto dto)
         {
@@ -72,7 +118,7 @@ namespace BeatWatch_BackEnd.Controllers
             }
         }
 
-        // 🟢 HU3.4: Endpoint para desvincular/eliminar un dispositivo
+        [Authorize]
         [HttpDelete("{id}")]
         public async Task<IActionResult> EliminarDispositivo(string id)
         {
@@ -86,6 +132,27 @@ namespace BeatWatch_BackEnd.Controllers
                 }
 
                 return Ok(new { mensaje = "Dispositivo desvinculado y eliminado exitosamente." });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { mensaje = ex.Message });
+            }
+        }
+        // 🟢 PATCH /api/Dispositivos/{id}/metricas
+        [Authorize]
+        [HttpPatch("{id}/metricas")]
+        public async Task<IActionResult> ActualizarMetricas(string id, [FromBody] ActualizarMetricasWearableDto dto)
+        {
+            try
+            {
+                var actualizado = await _dispositivoService.ActualizarMetricasAsync(id, dto);
+
+                if (!actualizado)
+                {
+                    return NotFound(new { mensaje = $"No se encontró el dispositivo con el ID '{id}'." });
+                }
+
+                return Ok(new { mensaje = "Métricas actualizadas correctamente." });
             }
             catch (ArgumentException ex)
             {

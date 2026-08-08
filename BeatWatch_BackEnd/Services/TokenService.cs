@@ -21,16 +21,28 @@ public sealed class TokenService : ITokenService
     public LoginResponse CreateAccessToken(Usuario usuario)
     {
         var expiresAt = DateTime.UtcNow.AddMinutes(_settings.ExpirationMinutes);
-        var claims = new[]
+
+        // 🟢 Agregamos los claims necesarios incluyendo el idLicencia y el Rol
+        var claims = new List<Claim>
         {
             new Claim(JwtRegisteredClaimNames.Sub, usuario.Id!),
             new Claim(JwtRegisteredClaimNames.Email, usuario.Correo),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new Claim(ClaimTypes.Role, usuario.Rol ?? string.Empty),
+            new Claim("idLicencia", usuario.IdLicencia ?? string.Empty) // 👈 ESTE ES EL CLAVE PARA EL REGISTRO
         };
+
         var credentials = new SigningCredentials(
             new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.SigningKey)),
             SecurityAlgorithms.HmacSha256);
-        var token = new JwtSecurityToken(_settings.Issuer, _settings.Audience, claims, expires: expiresAt, signingCredentials: credentials);
+
+        var token = new JwtSecurityToken(
+            _settings.Issuer,
+            _settings.Audience,
+            claims,
+            expires: expiresAt,
+            signingCredentials: credentials
+        );
 
         return new LoginResponse
         {
