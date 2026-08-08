@@ -49,9 +49,9 @@ namespace BeatWatch_BackEnd.Controllers
             {
                 return BadRequest(new { mensaje = ex.Message });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500, new { mensaje = "Error al generar el token y registrar el paciente.", detalle = ex.Message });
+                return StatusCode(500, new { mensaje = "Error al generar el token y registrar el paciente." });
             }
         }
 
@@ -103,9 +103,9 @@ namespace BeatWatch_BackEnd.Controllers
             {
                 return BadRequest(new { mensaje = ex.Message });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500, new { mensaje = "Error al obtener el perfil del paciente.", detalle = ex.Message });
+                return StatusCode(500, new { mensaje = "Error al obtener el perfil del paciente." });
             }
         }
 
@@ -115,6 +115,13 @@ namespace BeatWatch_BackEnd.Controllers
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
+
+            var usuarioSesionId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                                ?? User.FindFirst("sub")?.Value;
+            if (usuarioSesionId != usuarioId && !User.IsInRole("Administrador") && !User.IsInRole("Cuidador"))
+            {
+                return Forbid();
+            }
 
             var actualizado = await _pacienteService.ActualizarPerfilPacienteAsync(usuarioId, dto);
 
@@ -169,9 +176,9 @@ namespace BeatWatch_BackEnd.Controllers
             {
                 return Conflict(new { mensaje = ex.Message });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500, new { mensaje = "Error al completar el registro del paciente.", detalle = ex.Message });
+                return StatusCode(500, new { mensaje = "Error al completar el registro del paciente." });
             }
         }
     }

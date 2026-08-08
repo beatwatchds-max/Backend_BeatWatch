@@ -60,7 +60,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Build project
-      run: dotnet build BeatWatch_BackEnd.Tests/BeatWatch_BackEnd.Tests.csproj --no-restore --configuration Release
+      run: dotnet build BeatWatch_BackEnd.Tests/BeatWatch_BackEnd.Tests.csproj --no-restore --configuration Release --warnaserror
 
     - name: Run unit and integration tests with coverage
       run: >-

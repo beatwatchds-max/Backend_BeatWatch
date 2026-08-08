@@ -29,9 +29,9 @@ namespace BeatWatch_BackEnd.Controllers
             {
                 return NotFound(new { mensaje = ex.Message });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500, new { mensaje = "Error al compilar el comprobante PDF.", detalle = ex.Message });
+                return StatusCode(500, new { mensaje = "Error al compilar el comprobante PDF." });
             }
         }
     }

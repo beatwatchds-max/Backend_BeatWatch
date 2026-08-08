@@ -37,9 +37,9 @@ namespace BeatWatch_BackEnd.Controllers
             {
                 return BadRequest(new { mensaje = ex.Message });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500, new { mensaje = "Error interno del servidor.", detalle = ex.Message });
+                return StatusCode(500, new { mensaje = "Error interno del servidor." });
             }
         }
     }

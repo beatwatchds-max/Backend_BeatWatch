@@ -3,6 +3,7 @@ using BeatWatch_BackEnd.infrescture;
 using BeatWatch_BackEnd.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace BeatWatch_BackEnd.Controllers
 {
@@ -19,6 +20,7 @@ namespace BeatWatch_BackEnd.Controllers
 
         // 🟢 1. Endpoint llamado por el Reloj para iniciar la sesión QR
         [AllowAnonymous]
+        [EnableRateLimiting("device-pairing")]
         [HttpPost("sesion-emparejamiento")]
         public async Task<IActionResult> CrearSesionEmparejamiento([FromBody] CrearSesionEmparejamientoDto dto)
         {
@@ -55,6 +57,7 @@ namespace BeatWatch_BackEnd.Controllers
 
         // 🟢 3. Endpoint consultado (Polling) por el Reloj para validar si se emparejó
         [AllowAnonymous]
+        [EnableRateLimiting("device-pairing")]
         [HttpGet("emparejamiento/{idSesion}/estado")]
         public async Task<IActionResult> ObtenerEstadoEmparejamiento(
             string idSesion,

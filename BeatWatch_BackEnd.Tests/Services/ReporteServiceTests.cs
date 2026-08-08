@@ -54,9 +54,7 @@ namespace BeatWatch_BackEnd.Tests.Services
             {
                 Id = usuarioId,
                 Nombre = "Oscar Salinas",
-                Correo = "oscar@test.com",
-                EmpresaOrganizacion = "BeatWatch Inc",
-                RFC = "XAXX010101000"
+                Correo = "oscar@test.com"
             };
 
             // 1. Mockear el cursor de la Licencia

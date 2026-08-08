@@ -5,6 +5,7 @@ using BeatWatch_BackEnd.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
+using System.Security.Claims;
 
 namespace BeatWatch_BackEnd.Tests.Controllers;
 
@@ -16,7 +17,7 @@ public class PacientesControllerTests
     public async Task RegistrarPaciente_SolicitudValida_Retorna200()
     {
         var dto = new CrearPacienteDto { NombreCompleto = "Paciente", Correo = "paciente@test.com" };
-        _service.Setup(s => s.RegistrarPacienteAsync(dto)).ReturnsAsync(new Usuario { Id = "65f1a2b3c4d5e6f7a8b9c0d1", TokenMovil = "123456789" });
+        _service.Setup(s => s.RegistrarPacienteAsync(dto, "65f1a2b3c4d5e6f7a8b9c0d2")).ReturnsAsync(new Usuario { Id = "65f1a2b3c4d5e6f7a8b9c0d1", TokenMovil = "123456789" });
 
         Assert.IsType<OkObjectResult>(await CrearController().RegistrarPaciente(dto));
     }
@@ -25,7 +26,7 @@ public class PacientesControllerTests
     public async Task RegistrarPaciente_ErrorInterno_Retorna500()
     {
         var dto = new CrearPacienteDto { NombreCompleto = "Paciente", Correo = "paciente@test.com" };
-        _service.Setup(s => s.RegistrarPacienteAsync(dto)).ThrowsAsync(new InvalidOperationException());
+        _service.Setup(s => s.RegistrarPacienteAsync(dto, "65f1a2b3c4d5e6f7a8b9c0d2")).ThrowsAsync(new InvalidOperationException());
 
         var result = Assert.IsType<ObjectResult>(await CrearController().RegistrarPaciente(dto));
         Assert.Equal(StatusCodes.Status500InternalServerError, result.StatusCode);
@@ -59,7 +60,16 @@ public class PacientesControllerTests
         Assert.IsType<BadRequestObjectResult>(await CrearController().CrearPerfilPaciente(dto));
     }
 
-    private PacientesController CrearController() => new(_service.Object);
+    private PacientesController CrearController()
+    {
+        var controller = new PacientesController(_service.Object);
+        controller.ControllerContext.HttpContext = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim("idLicencia", "65f1a2b3c4d5e6f7a8b9c0d2")]))
+        };
+        return controller;
+    }
 
     private static CrearPerfilPacienteDto CrearPerfil() => new()
     {

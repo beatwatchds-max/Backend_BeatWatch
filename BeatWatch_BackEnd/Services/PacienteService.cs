@@ -258,9 +258,6 @@ namespace BeatWatch_BackEnd.Services
             if (!string.IsNullOrWhiteSpace(dto.TipoSangre))
                 updates.Add(Builders<Paciente>.Update.Set(p => p.TipoSangre, dto.TipoSangre.Trim().ToUpperInvariant()));
 
-            if (dto.IdLicencia != null)
-                updates.Add(Builders<Paciente>.Update.Set(p => p.IdLicencia, dto.IdLicencia));
-
             if (dto.Fotografia != null)
             {
                 byte[]? fotoBytes = !string.IsNullOrEmpty(dto.Fotografia)
@@ -370,7 +367,7 @@ namespace BeatWatch_BackEnd.Services
                 IdLicencia = idLicencia,
                 Fotografia = fotoBytes,
                 FechaNacimiento = dto.FechaNacimiento,
-                Direccion = dto.Direccion
+                Direccion = dto.Direccion ?? string.Empty
             };
 
             try

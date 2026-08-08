@@ -1,11 +1,13 @@
 ﻿using BeatWatch_BackEnd.infrescture;
 using BeatWatch_BackEnd.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BeatWatch_BackEnd.Controllers
 {
     [ApiController]
     [Route("api")]
+    [Authorize(Roles = "Administrador,Cuidador")]
     public class EtlEstadisticasController : ControllerBase
     {
         private readonly IEstadisticaService _estadisticaService;
@@ -24,9 +26,9 @@ namespace BeatWatch_BackEnd.Controllers
                 var resultado = await _estadisticaService.ObtenerPacientesUnicosConUltimoRegistroAsync();
                 return Ok(resultado);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500, new { mensaje = "Error al obtener la lista de pacientes registrados en estadísticas.", detalle = ex.Message });
+                return StatusCode(500, new { mensaje = "Error al obtener la lista de pacientes registrados en estadísticas." });
             }
         }
 
@@ -40,6 +42,8 @@ namespace BeatWatch_BackEnd.Controllers
         {
             try
             {
+                var rangoInvalido = ValidarRango(fecha_inicio, fecha_fin);
+                if (rangoInvalido is not null) return rangoInvalido;
                 var resultados = await _estadisticaService.ObtenerEstadisticasPorPacienteAsync(id_paciente, fecha_inicio, fecha_fin);
 
                 if (!resultados.Any())
@@ -60,9 +64,9 @@ namespace BeatWatch_BackEnd.Controllers
             {
                 return BadRequest(new { mensaje = ex.Message });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500, new { mensaje = "Error al consultar el historial de estadísticas.", detalle = ex.Message });
+                return StatusCode(500, new { mensaje = "Error al consultar el historial de estadísticas." });
             }
         }
 
@@ -78,6 +82,8 @@ namespace BeatWatch_BackEnd.Controllers
         {
             try
             {
+                var rangoInvalido = ValidarRango(fecha_inicio, fecha_fin, dias);
+                if (rangoInvalido is not null) return rangoInvalido;
                 var resultado = await _estadisticaService.ObtenerGraficaBpmAsync(id_paciente, fecha_inicio, fecha_fin, dias);
                 return Ok(resultado);
             }
@@ -85,9 +91,9 @@ namespace BeatWatch_BackEnd.Controllers
             {
                 return BadRequest(new { mensaje = ex.Message });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500, new { mensaje = "Error al generar la gráfica de ritmo cardíaco.", detalle = ex.Message });
+                return StatusCode(500, new { mensaje = "Error al generar la gráfica de ritmo cardíaco." });
             }
         }
 
@@ -103,6 +109,8 @@ namespace BeatWatch_BackEnd.Controllers
         {
             try
             {
+                var rangoInvalido = ValidarRango(fecha_inicio, fecha_fin, dias);
+                if (rangoInvalido is not null) return rangoInvalido;
                 var resultado = await _estadisticaService.ObtenerGraficaEpisodiosAsync(id_paciente, fecha_inicio, fecha_fin, dias);
                 return Ok(resultado);
             }
@@ -110,9 +118,9 @@ namespace BeatWatch_BackEnd.Controllers
             {
                 return BadRequest(new { mensaje = ex.Message });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500, new { mensaje = "Error al generar la gráfica de episodios de arritmia.", detalle = ex.Message });
+                return StatusCode(500, new { mensaje = "Error al generar la gráfica de episodios de arritmia." });
             }
         }
 
@@ -127,6 +135,8 @@ namespace BeatWatch_BackEnd.Controllers
         {
             try
             {
+                var rangoInvalido = ValidarRango(fecha_inicio, fecha_fin);
+                if (rangoInvalido is not null) return rangoInvalido;
                 var resultado = await _estadisticaService.ObtenerGraficaSeriesColumnarAsync(id_paciente, fecha_inicio, fecha_fin, metricas);
                 return Ok(resultado);
             }
@@ -134,9 +144,9 @@ namespace BeatWatch_BackEnd.Controllers
             {
                 return BadRequest(new { mensaje = ex.Message });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500, new { mensaje = "Error al generar la serie de tiempo.", detalle = ex.Message });
+                return StatusCode(500, new { mensaje = "Error al generar la serie de tiempo." });
             }
         }
 
@@ -152,6 +162,8 @@ namespace BeatWatch_BackEnd.Controllers
         {
             try
             {
+                var rangoInvalido = ValidarRango(fecha_inicio, fecha_fin, dias);
+                if (rangoInvalido is not null) return rangoInvalido;
                 var resultado = await _estadisticaService.ObtenerResumenKpiAsync(id_paciente, fecha_inicio, fecha_fin, dias);
                 return Ok(resultado);
             }
@@ -159,10 +171,33 @@ namespace BeatWatch_BackEnd.Controllers
             {
                 return BadRequest(new { mensaje = ex.Message });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500, new { mensaje = "Error al generar el resumen de métricas KPI.", detalle = ex.Message });
+                return StatusCode(500, new { mensaje = "Error al generar el resumen de métricas KPI." });
             }
+        }
+
+        private IActionResult? ValidarRango(DateTime? fechaInicio, DateTime? fechaFin, int? dias = null)
+        {
+            if (dias is < 1 or > 90)
+            {
+                return BadRequest(new { mensaje = "El parámetro dias debe estar entre 1 y 90." });
+            }
+
+            if (fechaInicio.HasValue && fechaFin.HasValue)
+            {
+                if (fechaInicio > fechaFin)
+                {
+                    return BadRequest(new { mensaje = "La fecha de inicio no puede ser posterior a la fecha de fin." });
+                }
+
+                if ((fechaFin.Value.Date - fechaInicio.Value.Date).TotalDays > 90)
+                {
+                    return BadRequest(new { mensaje = "El rango máximo de consulta es de 90 días." });
+                }
+            }
+
+            return null;
         }
 
     }

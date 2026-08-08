@@ -232,9 +232,9 @@ namespace BeatWatch_BackEnd.Services
             var filter = Builders<Dispositivo>.Filter.Eq(d => d.Id, idDispositivo);
 
             var update = Builders<Dispositivo>.Update
-                .Set(d => d.MetricasWearable.FrecuenciaCardiacaBpm, dto.FrecuenciaCardiacaBpm)
-                .Set(d => d.MetricasWearable.SaturacionOxigenoSpO2, dto.SaturacionOxigenoSpO2)
-                .Set(d => d.MetricasWearable.Pasos, dto.Pasos)
+                .Set("MetricasWearable.FrecuenciaCardiacaBpm", dto.FrecuenciaCardiacaBpm)
+                .Set("MetricasWearable.SaturacionOxigenoSpO2", dto.SaturacionOxigenoSpO2)
+                .Set("MetricasWearable.Pasos", dto.Pasos)
                 .Set(d => d.UltimaSincronizacion, DateTime.UtcNow);
 
             var result = await _context.Dispositivos.UpdateOneAsync(filter, update);
