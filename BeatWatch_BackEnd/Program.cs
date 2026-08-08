@@ -106,6 +106,7 @@ builder.Services.AddScoped<AutenticacionService>();
 builder.Services.AddScoped<IPacienteService, PacienteService>();
 builder.Services.AddScoped<ISaludService, SaludService>();
 builder.Services.AddHostedService<MongoDbInitializer>();
+builder.Services.AddScoped<IEstadisticaService, EstadisticaService>();
 builder.Services.AddControllers();
 builder.Services.AddHealthChecks();
 

@@ -41,10 +41,7 @@ namespace BeatWatch_BackEnd.Models
         [BsonRepresentation(BsonType.ObjectId)]
         public string? IdLicencia { get; set; }
 
-        // 🟢 Lista de IDs de los Cuidadores / Administradores asignados
-        [BsonElement("Cuidadores")]
-        [BsonRepresentation(BsonType.ObjectId)]
-        public List<string> Cuidadores { get; set; } = new();
+    
 
         [BsonElement("Fotografia")]
         public byte[]? Fotografia { get; set; }

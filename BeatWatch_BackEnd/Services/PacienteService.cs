@@ -164,26 +164,13 @@ namespace BeatWatch_BackEnd.Services
 
             if (paciente == null) return null;
 
-            // 2. Obtener la cuenta base de Usuario (donde reside Cuidadores, Nombre, Correo, Telefono)
+            // 2. Obtener la cuenta base de Usuario (aquí reside la propiedad Cuidadores)
             var usuarioCuenta = await _context.Usuarios
                 .Find(u => u.Id == usuarioId)
                 .FirstOrDefaultAsync();
 
-            // 3. Unificar los IDs de Cuidadores (priorizando los de la entidad Usuario)
-            var cuidadoresIds = new List<string>();
-
-            if (usuarioCuenta?.Cuidadores != null && usuarioCuenta.Cuidadores.Any())
-            {
-                cuidadoresIds.AddRange(usuarioCuenta.Cuidadores);
-            }
-
-            if (paciente.Cuidadores != null && paciente.Cuidadores.Any())
-            {
-                cuidadoresIds.AddRange(paciente.Cuidadores);
-            }
-
-            // Eliminar duplicados
-            cuidadoresIds = cuidadoresIds.Distinct().ToList();
+            // 3. Extraer los IDs de Cuidadores directamente desde usuarioCuenta
+            var cuidadoresIds = usuarioCuenta?.Cuidadores ?? new List<string>();
 
             // 4. Consultar la información de los Cuidadores/Admins asignados
             var cuidadoresList = new List<CuidadorInfoDto>();
@@ -195,7 +182,7 @@ namespace BeatWatch_BackEnd.Services
                     .Project(u => new CuidadorInfoDto
                     {
                         //Id = u.Id!,
-                        Nombre = u.Nombre
+                        Nombre = u.Nombre,
                         //Correo = u.Correo,
                         //Telefono = u.Telefono,
                         //Rol = u.Rol
@@ -301,8 +288,8 @@ namespace BeatWatch_BackEnd.Services
         }
 
         public async Task<(Usuario Usuario, Paciente Paciente)> RegistrarPacienteCompletoAsync(
-       RegistrarPacienteCompletoDto dto,
-       string idLicencia)
+         RegistrarPacienteCompletoDto dto,
+         string idLicencia)
         {
             var curp = dto.CURP.Trim().ToUpperInvariant();
             var tipoSangre = dto.TipoSangre.Trim().ToUpperInvariant();
@@ -344,7 +331,7 @@ namespace BeatWatch_BackEnd.Services
             // 4. Generar Token Único de 9 dígitos para la app móvil
             string tokenMovil = await GenerarTokenNumericoUnicoAsync();
 
-            // 5. Crear e insertar entidad Usuario
+            // 5. Crear e insertar la cuenta de Usuario (AQUÍ se guardan los cuidadores)
             var nuevoUsuario = new Usuario
             {
                 Nombre = dto.NombreCompleto,
@@ -355,7 +342,7 @@ namespace BeatWatch_BackEnd.Services
                 Activo = true,
                 FechaCreacion = DateTime.UtcNow,
                 IdLicencia = idLicencia,
-                Cuidadores = cuidadoresValidos // 👈 Guardamos los cuidadores en la cuenta Usuario
+                Cuidadores = cuidadoresValidos // 👈 Se asignan únicamente a la colección Usuarios
             };
 
             await _context.Usuarios.InsertOneAsync(nuevoUsuario);
@@ -370,10 +357,10 @@ namespace BeatWatch_BackEnd.Services
                 ? Convert.FromBase64String(dto.Fotografia)
                 : null;
 
-            // 8. Crear e insertar entidad Paciente con su lista de Cuidadores
+            // 8. Crear e insertar la entidad Paciente (sólo perfil clínico, vinculado mediante UsuarioId)
             var nuevoPaciente = new Paciente
             {
-                UsuarioId = nuevoUsuario.Id,
+                UsuarioId = nuevoUsuario.Id!,
                 CURP = curp,
                 Edad = dto.Edad,
                 Sexo = dto.Sexo.Trim(),
@@ -381,7 +368,6 @@ namespace BeatWatch_BackEnd.Services
                 Estatura = dto.Estatura,
                 TipoSangre = tipoSangre,
                 IdLicencia = idLicencia,
-                Cuidadores = cuidadoresValidos, // 👈 Se guarda la lista relacional en la entidad Paciente
                 Fotografia = fotoBytes,
                 FechaNacimiento = dto.FechaNacimiento,
                 Direccion = dto.Direccion
