@@ -103,18 +103,12 @@ jobs:
             exit 0
           fi
 
-          if ! kill -0 "$(cat api.pid)" 2>/dev/null; then
-            echo "La API se cerró durante el arranque"
-            echo "=== Log completo ==="
-            cat api.log || true
-            exit 1
-          fi
-
           sleep 2
         done
 
         echo "La API no estuvo disponible después de 60 segundos"
-        cat api.log || true
+        docker compose -f docker-compose.ci.yml ps
+        docker compose -f docker-compose.ci.yml logs api
         exit 1
     
 
@@ -122,13 +116,10 @@ jobs:
       if: failure()
       run: |
         echo "=== API logs ==="
-        cat api.log || true
+        docker compose -f docker-compose.ci.yml logs api || true
 
-        echo "=== Puertos abiertos ==="
-        ss -ltnp || true
-
-        echo "=== Procesos dotnet ==="
-        ps aux | grep dotnet || true
+        echo "=== Estado de contenedores ==="
+        docker compose -f docker-compose.ci.yml ps || true
 
     - name: Stop test environment
       if: always()
