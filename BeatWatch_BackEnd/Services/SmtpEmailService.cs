@@ -36,12 +36,10 @@ public sealed class SmtpEmailService : IEmailService
         };
 
         using var client = new SmtpClient();
+        client.Timeout = 15000;
 
-        // Timeout de 10 segundos para evitar bloqueos
-        client.Timeout = 10000;
-
-        // Conexión explícita usando STARTTLS en el puerto 587 (compatible con Render)
-        await client.ConnectAsync(_settings.SmtpHost, _settings.SmtpPort, SecureSocketOptions.StartTls, cancellationToken);
+        // Para puerto 465 usa SslOnConnect
+        await client.ConnectAsync(_settings.SmtpHost, _settings.SmtpPort, SecureSocketOptions.SslOnConnect, cancellationToken);
         await client.AuthenticateAsync(_settings.SmtpUsername, _settings.SmtpPassword, cancellationToken);
         await client.SendAsync(message, cancellationToken);
         await client.DisconnectAsync(true, cancellationToken);
