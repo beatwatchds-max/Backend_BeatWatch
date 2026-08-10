@@ -12,6 +12,7 @@ namespace BeatWatch_BackEnd.Tests.Controllers;
 public class PacientesControllerTests
 {
     private readonly Mock<IPacienteService> _service = new();
+    private readonly Mock<IPacienteAccessService> _accessService = new();
 
     [Fact]
     public async Task RegistrarPaciente_SolicitudValida_Retorna200()
@@ -62,7 +63,8 @@ public class PacientesControllerTests
 
     private PacientesController CrearController()
     {
-        var controller = new PacientesController(_service.Object);
+        _accessService.Setup(s => s.PuedeAccederAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<string>())).ReturnsAsync(true);
+        var controller = new PacientesController(_service.Object, _accessService.Object);
         controller.ControllerContext.HttpContext = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(

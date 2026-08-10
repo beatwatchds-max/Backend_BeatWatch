@@ -8,6 +8,7 @@ namespace BeatWatch_BackEnd.Tests.Controllers;
 public class EtlEstadisticasControllerTests
 {
     private readonly Mock<IEstadisticaService> _service = new();
+    private readonly Mock<IPacienteAccessService> _accessService = new();
 
     [Fact]
     public async Task ObtenerGraficaBpm_DiasFueraDeRango_Retorna400SinConsultarServicio()
@@ -30,5 +31,9 @@ public class EtlEstadisticasControllerTests
             It.IsAny<string>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>()), Times.Never);
     }
 
-    private EtlEstadisticasController CrearController() => new(_service.Object);
+    private EtlEstadisticasController CrearController()
+    {
+        _accessService.Setup(s => s.PuedeAccederAsync(It.IsAny<System.Security.Claims.ClaimsPrincipal>(), It.IsAny<string>())).ReturnsAsync(true);
+        return new(_service.Object, _accessService.Object);
+    }
 }

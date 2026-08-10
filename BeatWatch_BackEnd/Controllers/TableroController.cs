@@ -14,10 +14,12 @@ namespace BeatWatch_BackEnd.Controllers;
 public class TableroController : ControllerBase
 {
     private readonly ISaludService _saludService;
+    private readonly IPacienteAccessService _pacienteAccessService;
 
-    public TableroController(ISaludService saludService)
+    public TableroController(ISaludService saludService, IPacienteAccessService pacienteAccessService)
     {
         _saludService = saludService;
+        _pacienteAccessService = pacienteAccessService;
     }
 
     /// <summary>
@@ -31,6 +33,7 @@ public class TableroController : ControllerBase
         [FromQuery] int dias = 7,
         CancellationToken cancellationToken = default)
     {
+        if (!await _pacienteAccessService.PuedeAccederAsync(User, idPaciente)) return Forbid();
         var resumen = await _saludService.ObtenerResumenTableroAsync(idPaciente, dias, cancellationToken);
         return Ok(resumen);
     }

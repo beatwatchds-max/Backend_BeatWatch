@@ -218,6 +218,17 @@ namespace BeatWatch_BackEnd.Services
             };
         }
 
+        public async Task<DetallePacienteResponseDto?> ObtenerDetallePorPacienteIdAsync(string pacienteId)
+        {
+            if (!ObjectId.TryParse(pacienteId, out _))
+            {
+                throw new ArgumentException("El identificador de paciente no es válido.");
+            }
+
+            var paciente = await _context.Pacientes.Find(p => p.Id == pacienteId).FirstOrDefaultAsync();
+            return paciente is null ? null : await ObtenerDetallePorUsuarioIdAsync(paciente.UsuarioId);
+        }
+
 
         public async Task<bool> ActualizarPerfilPacienteAsync(string usuarioId, ActualizarPerfilPacienteDto dto)
         {

@@ -114,6 +114,7 @@ builder.Services.AddScoped<IReporteService, ReporteService>();
 builder.Services.AddScoped<IDispositivoService, DispositivoService>();
 builder.Services.AddScoped<AutenticacionService>();
 builder.Services.AddScoped<IPacienteService, PacienteService>();
+builder.Services.AddScoped<IPacienteAccessService, PacienteAccessService>();
 builder.Services.AddScoped<ISaludService, SaludService>();
 builder.Services.AddHostedService<MongoDbInitializer>();
 builder.Services.AddScoped<IEstadisticaService, EstadisticaService>();
@@ -159,15 +160,12 @@ builder.Services.AddSwaggerGen(c =>
 var app = builder.Build();
 
 // --- CONFIGURACIÓN DEL PIPELINE HTTP ---
-if (app.Environment.IsDevelopment())
+app.UseSwagger();
+app.UseSwaggerUI(options =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(options =>
-    {
-        options.SwaggerEndpoint("/swagger/v1/swagger.json", "BeatWatch API v1");
-        options.RoutePrefix = "swagger";
-    });
-}
+    options.SwaggerEndpoint("/swagger/v1/swagger.json", "BeatWatch API v1");
+    options.RoutePrefix = "swagger";
+});
 
 app.UseHttpsRedirection();
 

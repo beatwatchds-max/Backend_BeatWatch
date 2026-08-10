@@ -11,10 +11,12 @@ namespace BeatWatch_BackEnd.Controllers
     public class EtlEstadisticasController : ControllerBase
     {
         private readonly IEstadisticaService _estadisticaService;
+        private readonly IPacienteAccessService _pacienteAccessService;
 
-        public EtlEstadisticasController(IEstadisticaService estadisticaService)
+        public EtlEstadisticasController(IEstadisticaService estadisticaService, IPacienteAccessService pacienteAccessService)
         {
             _estadisticaService = estadisticaService;
+            _pacienteAccessService = pacienteAccessService;
         }
 
         // GET /api/pacientes
@@ -42,6 +44,7 @@ namespace BeatWatch_BackEnd.Controllers
         {
             try
             {
+                if (!await _pacienteAccessService.PuedeAccederAsync(User, id_paciente)) return Forbid();
                 var rangoInvalido = ValidarRango(fecha_inicio, fecha_fin);
                 if (rangoInvalido is not null) return rangoInvalido;
                 var resultados = await _estadisticaService.ObtenerEstadisticasPorPacienteAsync(id_paciente, fecha_inicio, fecha_fin);
@@ -82,6 +85,7 @@ namespace BeatWatch_BackEnd.Controllers
         {
             try
             {
+                if (!await _pacienteAccessService.PuedeAccederAsync(User, id_paciente)) return Forbid();
                 var rangoInvalido = ValidarRango(fecha_inicio, fecha_fin, dias);
                 if (rangoInvalido is not null) return rangoInvalido;
                 var resultado = await _estadisticaService.ObtenerGraficaBpmAsync(id_paciente, fecha_inicio, fecha_fin, dias);
@@ -109,6 +113,7 @@ namespace BeatWatch_BackEnd.Controllers
         {
             try
             {
+                if (!await _pacienteAccessService.PuedeAccederAsync(User, id_paciente)) return Forbid();
                 var rangoInvalido = ValidarRango(fecha_inicio, fecha_fin, dias);
                 if (rangoInvalido is not null) return rangoInvalido;
                 var resultado = await _estadisticaService.ObtenerGraficaEpisodiosAsync(id_paciente, fecha_inicio, fecha_fin, dias);
@@ -135,6 +140,7 @@ namespace BeatWatch_BackEnd.Controllers
         {
             try
             {
+                if (!await _pacienteAccessService.PuedeAccederAsync(User, id_paciente)) return Forbid();
                 var rangoInvalido = ValidarRango(fecha_inicio, fecha_fin);
                 if (rangoInvalido is not null) return rangoInvalido;
                 var resultado = await _estadisticaService.ObtenerGraficaSeriesColumnarAsync(id_paciente, fecha_inicio, fecha_fin, metricas);
@@ -162,6 +168,7 @@ namespace BeatWatch_BackEnd.Controllers
         {
             try
             {
+                if (!await _pacienteAccessService.PuedeAccederAsync(User, id_paciente)) return Forbid();
                 var rangoInvalido = ValidarRango(fecha_inicio, fecha_fin, dias);
                 if (rangoInvalido is not null) return rangoInvalido;
                 var resultado = await _estadisticaService.ObtenerResumenKpiAsync(id_paciente, fecha_inicio, fecha_fin, dias);

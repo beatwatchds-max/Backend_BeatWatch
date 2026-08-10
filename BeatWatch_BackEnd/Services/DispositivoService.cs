@@ -86,6 +86,10 @@ namespace BeatWatch_BackEnd.Services
                 throw new InvalidOperationException("El dispositivo ya se encuentra emparejado.");
             }
 
+            // Generar credenciales para el canal de comandos del wearable.
+            string accessToken = $"WATCH_ACCESS_{Guid.NewGuid():N}";
+            string refreshToken = $"WATCH_REFRESH_{Guid.NewGuid():N}";
+
             // Crear el registro oficial del dispositivo
             var nuevoDispositivo = new Dispositivo
             {
@@ -99,6 +103,7 @@ namespace BeatWatch_BackEnd.Services
                 FechaRegistro = DateTime.UtcNow,
                 UltimaSincronizacion = DateTime.UtcNow,
                 Activo = true,
+                WatchAccessToken = accessToken,
                 MetricasWearable = new MetricasWearableDto
                 {
                     FrecuenciaCardiacaBpm = 0,
@@ -108,10 +113,6 @@ namespace BeatWatch_BackEnd.Services
             };
 
             await _context.Dispositivos.InsertOneAsync(nuevoDispositivo);
-
-            // Generar tokens dummy para el reloj
-            string accessToken = $"WATCH_ACCESS_{Guid.NewGuid():N}";
-            string refreshToken = $"WATCH_REFRESH_{Guid.NewGuid():N}";
 
             // Actualizar la sesión a EMPAREJADO para responderle al polling del reloj
             var updateEmparejado = Builders<SesionEmparejamiento>.Update
@@ -235,11 +236,49 @@ namespace BeatWatch_BackEnd.Services
                 .Set("MetricasWearable.FrecuenciaCardiacaBpm", dto.FrecuenciaCardiacaBpm)
                 .Set("MetricasWearable.SaturacionOxigenoSpO2", dto.SaturacionOxigenoSpO2)
                 .Set("MetricasWearable.Pasos", dto.Pasos)
+                .Set(d => d.MedicionSolicitadaEn, null)
                 .Set(d => d.UltimaSincronizacion, DateTime.UtcNow);
 
             var result = await _context.Dispositivos.UpdateOneAsync(filter, update);
 
             return result.MatchedCount > 0;
+        }
+
+        public async Task<Dispositivo?> ObtenerDispositivoAsync(string idDispositivo)
+        {
+            if (!ObjectId.TryParse(idDispositivo, out _))
+            {
+                throw new ArgumentException("El identificador del dispositivo no tiene un formato válido.");
+            }
+
+            return await _context.Dispositivos.Find(d => d.Id == idDispositivo && d.Activo).FirstOrDefaultAsync();
+        }
+
+        public async Task<bool> SolicitarMedicionAsync(string idDispositivo)
+        {
+            if (!ObjectId.TryParse(idDispositivo, out _))
+            {
+                throw new ArgumentException("El identificador del dispositivo no tiene un formato válido.");
+            }
+
+            var update = Builders<Dispositivo>.Update.Set(d => d.MedicionSolicitadaEn, DateTime.UtcNow);
+            var result = await _context.Dispositivos.UpdateOneAsync(d => d.Id == idDispositivo && d.Activo, update);
+            return result.MatchedCount > 0;
+        }
+
+        public async Task<object> ObtenerComandosAsync(string idDispositivo, string watchAccessToken)
+        {
+            var dispositivo = await ObtenerDispositivoAsync(idDispositivo);
+            if (dispositivo is null || string.IsNullOrWhiteSpace(watchAccessToken) || dispositivo.WatchAccessToken != watchAccessToken)
+            {
+                throw new UnauthorizedAccessException("Las credenciales del wearable no son válidas.");
+            }
+
+            return new
+            {
+                comando = dispositivo.MedicionSolicitadaEn.HasValue ? "SOLICITAR_MEDICION" : null,
+                solicitadoEn = dispositivo.MedicionSolicitadaEn
+            };
         }
     }
 }
