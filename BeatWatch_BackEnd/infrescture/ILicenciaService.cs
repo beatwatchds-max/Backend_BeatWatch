@@ -4,6 +4,6 @@ namespace BeatWatch_BackEnd.Services
 {
     public interface ILicenciaService
     {
-        Task<Licencia?> ProcesarPagoYCrearLicenciaAsync(PagoSimuladoDto pagoDto);
+        Task<Licencia?> ProcesarPagoYCrearLicenciaAsync(ActivarLicenciaGratuitaDto dto);
     }
 }

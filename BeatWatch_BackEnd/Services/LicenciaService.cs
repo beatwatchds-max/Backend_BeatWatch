@@ -8,83 +8,53 @@ namespace BeatWatch_BackEnd.Services
     {
         private readonly MongoDbContext _context;
 
-        // Inyectamos tu clase de contexto real directamente
         public LicenciaService(MongoDbContext context)
         {
             _context = context;
         }
 
-        public async Task<Licencia?> ProcesarPagoYCrearLicenciaAsync(PagoSimuladoDto pagoDto)
+        public async Task<Licencia?> ProcesarPagoYCrearLicenciaAsync(ActivarLicenciaGratuitaDto dto)
         {
-            // 1. Validar tipo de plan (HU2.2)
-            if (pagoDto.TipoLicencia != "Individual" && pagoDto.TipoLicencia != "Grupal")
+            // 1. Buscar al usuario por ID o por Correo para validar existencia
+            var usuario = await _context.Usuarios
+                .Find(u => u.Id == dto.UsuarioId || u.Correo == dto.CorreoElectronico)
+                .FirstOrDefaultAsync();
+
+            if (usuario == null)
             {
-                throw new ArgumentException("Tipo de licencia no soportado.");
+                throw new ArgumentException("El usuario proporcionado no existe en el sistema.");
             }
 
-            // 2. Determinar estado inicial según el método seleccionado en la maqueta
-            string estadoPago = "Aprobado";
-            bool licenciaActiva = true;
+            // 2. Generar Código de Grupo único para el Plan Grupal Gratuito
+            string codigoGrupoUnico = $"BW-GR-{Guid.NewGuid().ToString()[..8].ToUpper()}";
 
-            if (pagoDto.MetodoPago.ToUpper() == "OXXO")
-            {
-                estadoPago = "Pendiente";
-                licenciaActiva = false; // Requiere pago físico en tienda
-            }
-            else if (pagoDto.MetodoPago.ToUpper() == "TARJETA")
-            {
-                // Simulación de validación bancaria real basada en la maqueta
-                if (string.IsNullOrWhiteSpace(pagoDto.NumeroTarjeta) ||
-                    string.IsNullOrWhiteSpace(pagoDto.NombreTitular) ||
-                    string.IsNullOrWhiteSpace(pagoDto.FechaExpiracion) ||
-                    string.IsNullOrWhiteSpace(pagoDto.Cvv))
-                {
-                    throw new ArgumentException("Todos los campos de la tarjeta son obligatorios para procesar el pago.");
-                }
-
-                if (pagoDto.Cvv.Length < 3 || pagoDto.Cvv.Length > 4)
-                {
-                    throw new ArgumentException("El código CVV no es válido (Debe tener 3 o 4 dígitos).");
-                }
-            }
-
-            // 3. Generar Código de Grupo único si es Plan Grupal
-            string codigoGrupoUnico = pagoDto.TipoLicencia == "Grupal"
-                ? $"BW-GR-{Guid.NewGuid().ToString()[..8].ToUpper()}"
-                : "INDIVIDUAL-NONE";
-
-            // 4. Calcular vigencia (1 mes)
+            // 3. Vigencia por defecto de 1 año (o 1 mes según tus reglas de negocio)
             var fechaInicio = DateTime.UtcNow;
-            var fechaFin = fechaInicio.AddMonths(1);
+            var fechaFin = fechaInicio.AddYears(1);
 
             var nuevaLicencia = new Licencia
             {
-                UsuarioId = pagoDto.UsuarioId,
-                Tipo = pagoDto.TipoLicencia, // Mapeado a tu propiedad 'Tipo'
+                UsuarioId = usuario.Id!,
+                UsuariosAsociados = new List<string> { usuario.Id! },
+                Tipo = "Grupal",
                 CodigoGrupo = codigoGrupoUnico,
                 FechaInicio = fechaInicio,
                 FechaFin = fechaFin,
-                MetodoPago = pagoDto.MetodoPago,
-                EstadoPago = estadoPago,
-                Activa = licenciaActiva
+                MetodoPago = "Gratuito",
+                EstadoPago = "Aprobado",
+                Activa = true
             };
 
-            // Guardar usando la propiedad directa de tu MongoDbContext
+            // Guardar en MongoDB
             await _context.Licencias.InsertOneAsync(nuevaLicencia);
 
-            // 5. HU2.3: Actualizar el estado del usuario a Activo (si aplica)
-            // 5. HU2.3: Actualizar el estado del usuario a Activo y Vincular el IdLicencia
-            if (licenciaActiva)
-            {
-                var filter = Builders<Usuario>.Filter.Eq(u => u.Id, pagoDto.UsuarioId);
+            // 4. Activar el estado del Usuario y Vincular la nueva Licencia
+            var filter = Builders<Usuario>.Filter.Eq(u => u.Id, usuario.Id);
+            var update = Builders<Usuario>.Update
+                .Set(u => u.Activo, true)
+                .Set(u => u.IdLicencia, nuevaLicencia.Id);
 
-                // Asignamos Activo = true Y guardamos la IdLicencia recién generada
-                var update = Builders<Usuario>.Update
-                    .Set(u => u.Activo, true)
-                    .Set(u => u.IdLicencia, nuevaLicencia.Id);
-
-                await _context.Usuarios.UpdateOneAsync(filter, update);
-            }
+            await _context.Usuarios.UpdateOneAsync(filter, update);
 
             return nuevaLicencia;
         }
