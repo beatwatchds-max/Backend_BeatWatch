@@ -95,18 +95,18 @@ namespace BeatWatch_BackEnd.Controllers
         {
             try
             {
-                // Extraer el UsuarioId del Token JWT
-                var usuarioIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                                  ?? User.FindFirst("sub")?.Value;
-
                 var detallePaciente = await _pacienteService.ObtenerDetallePorUsuarioIdAsync(usuarioId);
 
                 if (detallePaciente == null)
                 {
-                    return NotFound(new { mensaje = "El perfil del paciente aún no ha sido registrado." });
+                    return NotFound(new { mensaje = "El perfil del paciente aún no ha sido registrado en esta licencia." });
                 }
 
-                if (!await _pacienteAccessService.PuedeAccederAsync(User, detallePaciente.PacienteId)) return Forbid();
+                // Se valida el acceso contra el PacienteId resultante
+                if (!await _pacienteAccessService.PuedeAccederAsync(User, detallePaciente.PacienteId))
+                {
+                    return Forbid();
+                }
 
                 return Ok(detallePaciente);
             }
@@ -114,9 +114,9 @@ namespace BeatWatch_BackEnd.Controllers
             {
                 return BadRequest(new { mensaje = ex.Message });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                return StatusCode(500, new { mensaje = "Error al obtener el perfil del paciente." });
+                return StatusCode(500, new { mensaje = "Error al obtener el perfil del paciente.", detalle = ex.Message });
             }
         }
 

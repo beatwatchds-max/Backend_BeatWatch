@@ -157,22 +157,47 @@ namespace BeatWatch_BackEnd.Services
                 throw new ArgumentException("El identificador de usuario no es válido.");
             }
 
-            // 1. Obtener la entidad Paciente por UsuarioId
-            var paciente = await _context.Pacientes
-                .Find(p => p.UsuarioId == usuarioId)
-                .FirstOrDefaultAsync();
-
-            if (paciente == null) return null;
-
-            // 2. Obtener la cuenta base de Usuario (aquí reside la propiedad Cuidadores)
+            // 1. Obtener los datos del Usuario recibido por ID (puede ser Paciente, Admin o Cuidador)
             var usuarioCuenta = await _context.Usuarios
                 .Find(u => u.Id == usuarioId)
                 .FirstOrDefaultAsync();
 
-            // 3. Extraer los IDs de Cuidadores directamente desde usuarioCuenta
+            if (usuarioCuenta == null) return null;
+
+            Paciente? paciente = null;
+
+            // 2. Si el usuario logueado es un Paciente, buscamos su perfil directo
+            if (usuarioCuenta.Rol == "Paciente")
+            {
+                paciente = await _context.Pacientes
+                    .Find(p => p.UsuarioId == usuarioId)
+                    .FirstOrDefaultAsync();
+            }
+            else
+            {
+                // 🟢 Si es Administrador o Cuidador, buscamos el paciente asignado a su Licencia
+                if (!string.IsNullOrEmpty(usuarioCuenta.IdLicencia))
+                {
+                    paciente = await _context.Pacientes
+                        .Find(p => p.IdLicencia == usuarioCuenta.IdLicencia)
+                        .FirstOrDefaultAsync();
+
+                    // Si se encontró el paciente de la licencia, recuperamos la cuenta de Usuario del Paciente para mostrar SUS datos
+                    if (paciente != null)
+                    {
+                        usuarioCuenta = await _context.Usuarios
+                            .Find(u => u.Id == paciente.UsuarioId)
+                            .FirstOrDefaultAsync() ?? usuarioCuenta;
+                    }
+                }
+            }
+
+            if (paciente == null) return null;
+
+            // 3. Extraer la lista de IDs de Cuidadores asociadas a la cuenta del Paciente
             var cuidadoresIds = usuarioCuenta?.Cuidadores ?? new List<string>();
 
-            // 4. Consultar la información de los Cuidadores/Admins asignados
+            // 4. Consultar los nombres de los cuidadores asignados
             var cuidadoresList = new List<CuidadorInfoDto>();
             if (cuidadoresIds.Any())
             {
@@ -181,21 +206,17 @@ namespace BeatWatch_BackEnd.Services
                     .Find(filterCuidadores)
                     .Project(u => new CuidadorInfoDto
                     {
-                        //Id = u.Id!,
-                        Nombre = u.Nombre,
-                        //Correo = u.Correo,
-                        //Telefono = u.Telefono,
-                        //Rol = u.Rol
+                        Nombre = u.Nombre
                     })
                     .ToListAsync();
             }
 
-            // 5. Consultar las Arritmias / Condiciones asociadas al paciente
+            // 5. Consultar Arritmias del Paciente
             var arritmias = await _context.Arritmias
                 .Find(a => a.IdPaciente == paciente.Id)
                 .ToListAsync();
 
-            // 6. Mapeo final
+            // 6. Retornar los datos clínicos Y de contacto pertenecientes AL PACIENTE
             return new DetallePacienteResponseDto
             {
                 PacienteId = paciente.Id!,
