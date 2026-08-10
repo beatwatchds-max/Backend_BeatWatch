@@ -94,16 +94,40 @@ namespace BeatWatch_BackEnd.Controllers
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(idPaciente) || !await _pacienteAccessService.PuedeAccederAsync(User, idPaciente)) return Forbid();
-                var dispositivos = await _dispositivoService.ObtenerDispositivosPorPacienteAsync(idPaciente);
-                return Ok(dispositivos);
+                // 1. Extraer idLicencia desde las Claims del JWT del usuario logueado
+                var idLicenciaClaim = User.FindFirst("idLicencia")?.Value
+                                    ?? User.FindFirst("LicenciaId")?.Value;
+
+                // 2. Si se envió idPaciente explícito (App Móvil), validamos el acceso
+                if (!string.IsNullOrWhiteSpace(idPaciente))
+                {
+                    if (!await _pacienteAccessService.PuedeAccederAsync(User, idPaciente))
+                    {
+                        return Forbid();
+                    }
+
+                    var dispositivosPaciente = await _dispositivoService.ObtenerDispositivosPorPacienteAsync(idPaciente);
+                    return Ok(dispositivosPaciente);
+                }
+
+                // 3. Si NO se envió idPaciente (Dashboard Web), obtenemos los dispositivos por Licencia
+                if (string.IsNullOrWhiteSpace(idLicenciaClaim))
+                {
+                    return BadRequest(new { mensaje = "El usuario autenticado no tiene una licencia asociada." });
+                }
+
+                var dispositivosLicencia = await _dispositivoService.ObtenerDispositivosPorLicenciaAsync(idLicenciaClaim);
+                return Ok(dispositivosLicencia);
             }
             catch (ArgumentException ex)
             {
                 return BadRequest(new { mensaje = ex.Message });
             }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { mensaje = "Error interno al consultar dispositivos.", detalle = ex.Message });
+            }
         }
-
         [Authorize]
         [HttpPut("{id}")]
         public async Task<IActionResult> ActualizarAlias(string id, [FromBody] ActualizarAliasDto dto)

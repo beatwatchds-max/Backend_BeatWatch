@@ -198,6 +198,29 @@ namespace BeatWatch_BackEnd.Services
             return await _context.Dispositivos.Find(filter).ToListAsync();
         }
 
+        public async Task<List<Dispositivo>> ObtenerDispositivosPorLicenciaAsync(string idLicencia)
+        {
+            if (!ObjectId.TryParse(idLicencia, out _))
+            {
+                throw new ArgumentException("El identificador de la licencia no tiene un formato válido.");
+            }
+
+            // A. Obtener los IDs de los Pacientes registrados bajo esta Licencia
+            var pacienteIds = await _context.Pacientes
+                .Find(p => p.IdLicencia == idLicencia)
+                .Project(p => p.Id!)
+                .ToListAsync();
+
+            if (!pacienteIds.Any())
+            {
+                return new List<Dispositivo>();
+            }
+
+            // B. Consultar los dispositivos vinculados a esos IDs de paciente
+            var filter = Builders<Dispositivo>.Filter.In(d => d.IdPaciente, pacienteIds);
+            return await _context.Dispositivos.Find(filter).ToListAsync();
+        }
+
         public async Task<bool> ActualizarAliasAsync(string id, string nuevoAlias)
         {
             if (!ObjectId.TryParse(id, out _))
