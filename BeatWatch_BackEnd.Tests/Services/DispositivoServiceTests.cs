@@ -18,7 +18,8 @@ public class DispositivoServiceTests
         var exception = await Assert.ThrowsAsync<ArgumentException>(() => service.EmparejarDispositivoAsync(new EmparejarDispositivoDto
         {
             IdPaciente = "invalido",
-            NumeroSerie = " serie-001 ",
+            IdSesion = "sesion-001",
+            TokenEmparejamiento = "token-001",
             Alias = " Reloj "
         }));
 

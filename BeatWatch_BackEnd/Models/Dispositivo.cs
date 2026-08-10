@@ -56,6 +56,13 @@ namespace BeatWatch_BackEnd.Models
 
         [BsonElement("Activo")]
         public bool Activo { get; set; } = true;
+
+        [BsonElement("MedicionSolicitadaEn")]
+        [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
+        public DateTime? MedicionSolicitadaEn { get; set; }
+
+        [BsonElement("WatchAccessToken")]
+        public string? WatchAccessToken { get; set; }
     }
 
     public class MetricasWearableDto

@@ -23,8 +23,6 @@ namespace BeatWatch_BackEnd.DTOs
 
         public string? TipoSangre { get; set; }
 
-        public string? IdLicencia { get; set; }
-
         public string? Fotografia { get; set; }
     }
 }

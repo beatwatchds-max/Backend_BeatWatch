@@ -16,7 +16,9 @@ public class HistorialControllerTests
         var service = new Mock<ISaludService>();
         service.Setup(s => s.ObtenerHistorialArritmiasAsync(idPaciente, It.IsAny<CancellationToken>()))
             .ReturnsAsync(historial);
-        var controller = new HistorialController(service.Object);
+        var accessService = new Mock<IPacienteAccessService>();
+        accessService.Setup(s => s.PuedeAccederAsync(It.IsAny<System.Security.Claims.ClaimsPrincipal>(), idPaciente)).ReturnsAsync(true);
+        var controller = new HistorialController(service.Object, accessService.Object);
 
         var resultado = await controller.ObtenerArritmias(idPaciente, CancellationToken.None);
 

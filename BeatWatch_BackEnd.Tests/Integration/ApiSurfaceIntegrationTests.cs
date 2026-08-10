@@ -1,6 +1,5 @@
 using System.Net;
 using System.Net.Http.Json;
-using System.Text.Json;
 
 namespace BeatWatch_BackEnd.Tests.Integration;
 
@@ -14,12 +13,12 @@ public sealed class ApiSurfaceIntegrationTests : IClassFixture<BeatWatchApiFacto
     }
 
     [MongoIntegrationFact]
-    public async Task PublicReadEndpoints_ReturnSuccess()
+    public async Task PublicAndProtectedReadEndpoints_ReturnExpectedStatuses()
     {
         var usuarios = await _client.GetAsync("/api/usuarios?page=0&pageSize=101");
         var weather = await _client.GetAsync("/WeatherForecast");
 
-        Assert.Equal(HttpStatusCode.OK, usuarios.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, usuarios.StatusCode);
         Assert.Equal(HttpStatusCode.OK, weather.StatusCode);
     }
 
@@ -57,7 +56,7 @@ public sealed class ApiSurfaceIntegrationTests : IClassFixture<BeatWatchApiFacto
     }
 
     [MongoIntegrationFact]
-    public async Task ArritmiaEndpoint_RechazaPayloadsInvalidos()
+    public async Task ArritmiaEndpoint_RechazaSolicitudesAnonimas()
     {
         var missingNestedObjects = await _client.PostAsJsonAsync("/api/salud/arritmia", new
         {
@@ -76,12 +75,12 @@ public sealed class ApiSurfaceIntegrationTests : IClassFixture<BeatWatchApiFacto
             factoresRiesgo = new { }
         });
 
-        Assert.Equal(HttpStatusCode.BadRequest, missingNestedObjects.StatusCode);
-        Assert.Equal(HttpStatusCode.BadRequest, invalidValues.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, missingNestedObjects.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, invalidValues.StatusCode);
     }
 
     [MongoIntegrationFact]
-    public async Task PaymentAndReportErrors_ReturnExpectedClientStatus()
+    public async Task PaymentAndReportEndpoints_RejectAnonymousRequests()
     {
         var payment = await _client.PostAsJsonAsync("/api/licencias/procesar-pago", new
         {
@@ -91,12 +90,12 @@ public sealed class ApiSurfaceIntegrationTests : IClassFixture<BeatWatchApiFacto
         });
         var report = await _client.GetAsync("/api/reportes/descargar/recibo/65f1a2b3c4d5e6f7a8b9c0d1");
 
-        Assert.Equal(HttpStatusCode.BadRequest, payment.StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, report.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, payment.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, report.StatusCode);
     }
 
     [MongoIntegrationFact]
-    public async Task PatientRegistrationAndInvalidMobileLogin_ReturnExpectedStatuses()
+    public async Task PatientRegistrationRequiresAuthentication_AndMobileLoginValidatesPayload()
     {
         var patient = await _client.PostAsJsonAsync("/api/pacientes/registrar", new
         {
@@ -106,12 +105,12 @@ public sealed class ApiSurfaceIntegrationTests : IClassFixture<BeatWatchApiFacto
         });
         var mobileLogin = await _client.PostAsJsonAsync("/api/autenticacion/iniciar-sesion-movil", new { token = "invalid" });
 
-        Assert.Equal(HttpStatusCode.OK, patient.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, patient.StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, mobileLogin.StatusCode);
     }
 
     [MongoIntegrationFact]
-    public async Task OxxoPayment_CreatesLicenseAndGeneratesPdfReceipt()
+    public async Task OxxoPayment_RejectsAnonymousRequests()
     {
         var payment = await _client.PostAsJsonAsync("/api/licencias/procesar-pago", new
         {
@@ -120,16 +119,6 @@ public sealed class ApiSurfaceIntegrationTests : IClassFixture<BeatWatchApiFacto
             metodoPago = "OXXO",
             correoElectronico = "payment@beatwatch.test"
         });
-        var paymentBody = await payment.Content.ReadFromJsonAsync<JsonElement>();
-        var licenseId = paymentBody.GetProperty("licencia").GetProperty("id").GetString();
-        var receipt = await _client.GetAsync($"/api/reportes/descargar/recibo/{licenseId}");
-        var bytes = await receipt.Content.ReadAsByteArrayAsync();
-
-        Assert.Equal(HttpStatusCode.OK, payment.StatusCode);
-        Assert.False(string.IsNullOrWhiteSpace(licenseId));
-        Assert.Equal(HttpStatusCode.OK, receipt.StatusCode);
-        Assert.Equal("application/pdf", receipt.Content.Headers.ContentType?.MediaType);
-        Assert.True(bytes.Length > 4);
-        Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(bytes, 0, 4));
+        Assert.Equal(HttpStatusCode.Unauthorized, payment.StatusCode);
     }
 }

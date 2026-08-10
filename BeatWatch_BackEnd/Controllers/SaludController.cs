@@ -1,18 +1,22 @@
 using BeatWatch_BackEnd.Dtos;
 using BeatWatch_BackEnd.infrescture;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace BeatWatch_BackEnd.Controllers;
 
 [ApiController]
 [Route("api/salud")]
+[Authorize]
 public class SaludController : ControllerBase
 {
     private readonly ISaludService _saludService;
+    private readonly IPacienteAccessService _pacienteAccessService;
 
-    public SaludController(ISaludService saludService)
+    public SaludController(ISaludService saludService, IPacienteAccessService pacienteAccessService)
     {
         _saludService = saludService;
+        _pacienteAccessService = pacienteAccessService;
     }
 
     /// <summary>
@@ -23,6 +27,7 @@ public class SaludController : ControllerBase
         [FromBody] RegistrarArritmiaDto solicitud,
         CancellationToken cancellationToken)
     {
+        if (!await _pacienteAccessService.PuedeAccederAsync(User, solicitud.IdPaciente)) return Forbid();
         await _saludService.RegistrarArritmiaAsync(solicitud, cancellationToken);
         return StatusCode(StatusCodes.Status201Created);
     }
@@ -35,6 +40,7 @@ public class SaludController : ControllerBase
         [FromBody] RegistrarAlertaFrecuenciaDto solicitud,
         CancellationToken cancellationToken)
     {
+        if (!await _pacienteAccessService.PuedeAccederAsync(User, solicitud.IdPaciente)) return Forbid();
         await _saludService.RegistrarAlertaFrecuenciaAsync(solicitud, cancellationToken);
         return StatusCode(StatusCodes.Status201Created);
     }
@@ -47,6 +53,7 @@ public class SaludController : ControllerBase
         [FromBody] RegistrarActividadDiariaDto solicitud,
         CancellationToken cancellationToken)
     {
+        if (!await _pacienteAccessService.PuedeAccederAsync(User, solicitud.IdPaciente)) return Forbid();
         await _saludService.RegistrarActividadDiariaAsync(solicitud, cancellationToken);
         return StatusCode(StatusCodes.Status201Created, new { mensaje = "Actividad diaria registrada con éxito." });
     }

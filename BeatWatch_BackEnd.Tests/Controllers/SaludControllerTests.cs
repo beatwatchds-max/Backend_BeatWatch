@@ -16,7 +16,9 @@ public class SaludControllerTests
         var solicitud = CrearSolicitud();
         service.Setup(s => s.RegistrarArritmiaAsync(solicitud, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Arritmia());
-        var controller = new SaludController(service.Object);
+        var accessService = new Mock<IPacienteAccessService>();
+        accessService.Setup(s => s.PuedeAccederAsync(It.IsAny<System.Security.Claims.ClaimsPrincipal>(), solicitud.IdPaciente)).ReturnsAsync(true);
+        var controller = new SaludController(service.Object, accessService.Object);
 
         var resultado = await controller.RegistrarArritmia(solicitud, CancellationToken.None);
 

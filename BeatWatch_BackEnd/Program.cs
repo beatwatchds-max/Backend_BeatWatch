@@ -42,7 +42,8 @@ builder.Services.AddCors(options =>
                 "http://localhost:5173", // React / Vite (puerto por defecto)
                 "http://localhost:5174", // React / Vite (el puerto que usa tu compañero)
                 "http://localhost:3000",  // React clásico / Next.js
-                "https://frontend-beatwatch-857q.onrender.com"
+                "https://frontend-beatwatch-857q.onrender.com",
+                "https://beatwatch-frontend.onrender.com"
               )
               .AllowAnyHeader()
               .AllowAnyMethod()
@@ -72,6 +73,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
+builder.Services.AddAuthorizationBuilder()
+    .SetFallbackPolicy(new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build());
+
 // --- CONFIGURACIÓN AGRUPADA DE RATE LIMITING ---
 builder.Services.AddRateLimiter(options =>
 {
@@ -90,7 +96,12 @@ builder.Services.AddRateLimiter(options =>
     options.AddPolicy("LoginMovilPolicy", context =>
         RateLimitPartition.GetFixedWindowLimiter(
             context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-            _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+             _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+
+    options.AddPolicy("device-pairing", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
 });
 
 // --- INYECCIÓN DE DEPENDENCIAS ---
@@ -104,6 +115,7 @@ builder.Services.AddScoped<IReporteService, ReporteService>();
 builder.Services.AddScoped<IDispositivoService, DispositivoService>();
 builder.Services.AddScoped<AutenticacionService>();
 builder.Services.AddScoped<IPacienteService, PacienteService>();
+builder.Services.AddScoped<IPacienteAccessService, PacienteAccessService>();
 builder.Services.AddScoped<ISaludService, SaludService>();
 builder.Services.AddHostedService<MongoDbInitializer>();
 builder.Services.AddScoped<IEstadisticaService, EstadisticaService>();
@@ -149,17 +161,27 @@ builder.Services.AddSwaggerGen(c =>
 var app = builder.Build();
 
 // --- CONFIGURACIÓN DEL PIPELINE HTTP ---
-if (app.Environment.IsDevelopment())
+app.UseSwagger();
+app.UseSwaggerUI(options =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(options =>
-    {
-        options.SwaggerEndpoint("/swagger/v1/swagger.json", "BeatWatch API v1");
-        options.RoutePrefix = "swagger";
-    });
-}
+    options.SwaggerEndpoint("/swagger/v1/swagger.json", "BeatWatch API v1");
+    options.RoutePrefix = "swagger";
+});
 
 app.UseHttpsRedirection();
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHsts();
+}
+
+app.Use(async (context, next) =>
+{
+    context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    context.Response.Headers["X-Frame-Options"] = "DENY";
+    context.Response.Headers["Referrer-Policy"] = "no-referrer";
+    await next();
+});
 
 // --- 2. USAR CORS (DEBE IR ANTES DE AUTHENTICATION Y AUTHORIZATION) ---
 app.UseCors("AllowFrontend");
@@ -169,7 +191,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-app.MapHealthChecks("/health");
+app.MapHealthChecks("/health").AllowAnonymous();
 
 app.Run();
 

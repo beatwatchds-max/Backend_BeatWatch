@@ -18,9 +18,9 @@ public class DeviceAndHealthDtoValidationTests
     {
         var errors = Validar(new EmparejarDispositivoDto
         {
-            NumeroSerie = "SERIAL-001",
+            IdSesion = "sesion-001",
+            TokenEmparejamiento = "token-001",
             Alias = "Reloj",
-            TipoDispositivo = "Wearable",
             IdPaciente = "65f1a2b3c4d5e6f7a8b9c0d1"
         });
 
