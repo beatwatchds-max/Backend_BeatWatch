@@ -18,10 +18,10 @@ public sealed class HealthIntegrationTests : IClassFixture<BeatWatchApiFactory>
     }
 
     [MongoIntegrationFact]
-    public async Task DatabaseStatus_Returns200_WhenIndexesAreInitialized()
+    public async Task DatabaseStatus_RejectsAnonymousRequests()
     {
         var response = await _client.GetAsync("/api/test/db-status");
 
-        Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(System.Net.HttpStatusCode.Unauthorized, response.StatusCode);
     }
 }

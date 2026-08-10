@@ -24,8 +24,7 @@ namespace BeatWatch_BackEnd.Controllers
       [FromQuery] int page = 1,
       [FromQuery] int pageSize = 10,
       [FromQuery] string? searchName = null,
-      [FromQuery] string? searchEmail = null,
-      [FromQuery] string? idLicencia = null)
+       [FromQuery] string? searchEmail = null)
         {
             // 1. Validaciones básicas de paginación
             if (page < 1) page = 1;
@@ -34,16 +33,13 @@ namespace BeatWatch_BackEnd.Controllers
 
             try
             {
-                // 2. Extraer idLicencia desde el Token JWT del Administrador si no se envió por Query
-                if (string.IsNullOrWhiteSpace(idLicencia))
-                {
-                    idLicencia = User.FindFirst("idLicencia")?.Value
+                // El ámbito de licencia siempre procede del JWT, nunca de la consulta del cliente.
+                var idLicencia = User.FindFirst("idLicencia")?.Value
                               ?? User.FindFirst("LicenciaId")?.Value;
-                }
 
                 if (string.IsNullOrEmpty(idLicencia))
                 {
-                    return BadRequest(new { mensaje = "No se encontró un identificador de licencia válido en la sesión ni en la consulta." });
+                    return BadRequest(new { mensaje = "No se encontró un identificador de licencia válido en la sesión." });
                 }
 
                 var resultado = await _usuarioService.ObtenerUsuariosPaginadosAsync(page, pageSize, searchName, searchEmail, idLicencia);
@@ -142,9 +138,9 @@ namespace BeatWatch_BackEnd.Controllers
             {
                 return Conflict(new { message = ex.Message });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500, new { message = "Error al registrar el cuidador.", detalle = ex.Message });
+                return StatusCode(500, new { message = "Error al registrar el cuidador." });
             }
         }
         // 🟢 GET /api/Usuarios/cuidadores-disponibles
@@ -170,9 +166,9 @@ namespace BeatWatch_BackEnd.Controllers
             {
                 return BadRequest(new { mensaje = ex.Message });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500, new { mensaje = "Error al obtener la lista de cuidadores.", detalle = ex.Message });
+                return StatusCode(500, new { mensaje = "Error al obtener la lista de cuidadores." });
             }
         }
     }

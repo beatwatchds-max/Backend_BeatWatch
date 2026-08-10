@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace BeatWatch_BackEnd.Controllers
 {
@@ -12,6 +13,7 @@ namespace BeatWatch_BackEnd.Controllers
         ];
 
         [HttpGet(Name = "GetWeatherForecast")]
+        [AllowAnonymous]
         public IEnumerable<WeatherForecast> Get()
         {
             return Enumerable.Range(1, 5).Select(index => new WeatherForecast

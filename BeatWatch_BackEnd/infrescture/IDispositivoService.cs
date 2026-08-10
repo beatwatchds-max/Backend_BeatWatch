@@ -12,5 +12,8 @@ namespace BeatWatch_BackEnd.infrescture
         Task<bool> ActualizarAliasAsync(string id, string nuevoAlias);
         Task<bool> EliminarDispositivoAsync(string id);
         Task<bool> ActualizarMetricasAsync(string idDispositivo, ActualizarMetricasWearableDto dto);
+        Task<Dispositivo?> ObtenerDispositivoAsync(string idDispositivo);
+        Task<bool> SolicitarMedicionAsync(string idDispositivo);
+        Task<object> ObtenerComandosAsync(string idDispositivo, string watchAccessToken);
     }
 }

@@ -13,10 +13,12 @@ namespace BeatWatch_BackEnd.Controllers
     public class PacientesController : ControllerBase
     {
         private readonly IPacienteService _pacienteService;
+        private readonly IPacienteAccessService _pacienteAccessService;
 
-        public PacientesController(IPacienteService pacienteService)
+        public PacientesController(IPacienteService pacienteService, IPacienteAccessService pacienteAccessService)
         {
             _pacienteService = pacienteService;
+            _pacienteAccessService = pacienteAccessService;
         }
 
         // 1. POST /api/Pacientes/registrar
@@ -49,19 +51,21 @@ namespace BeatWatch_BackEnd.Controllers
             {
                 return BadRequest(new { mensaje = ex.Message });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500, new { mensaje = "Error al generar el token y registrar el paciente.", detalle = ex.Message });
+                return StatusCode(500, new { mensaje = "Error al generar el token y registrar el paciente." });
             }
         }
 
         // 2. POST /api/Pacientes/perfil
-        [Authorize(Roles = "Administrador,Cuidador,Paciente")]
+        [Authorize(Roles = "Paciente")]
         [HttpPost("perfil")]
         public async Task<IActionResult> CrearPerfilPaciente([FromBody] CrearPerfilPacienteDto perfilDto)
         {
             try
             {
+                perfilDto.UsuarioId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value ?? string.Empty;
+                perfilDto.IdLicencia = User.FindFirst("idLicencia")?.Value ?? User.FindFirst("LicenciaId")?.Value ?? string.Empty;
                 var paciente = await _pacienteService.CrearPerfilAsync(perfilDto);
                 return StatusCode(StatusCodes.Status201Created, new { pacienteId = paciente.Id });
             }
@@ -74,6 +78,17 @@ namespace BeatWatch_BackEnd.Controllers
                 return BadRequest(new { mensaje = ex.Message });
             }
         }
+        [HttpGet("perfil/paciente/{idPaciente}")]
+        [Authorize(Roles = "Administrador,Cuidador,Paciente")]
+        public async Task<IActionResult> ObtenerPerfilPorPacienteId(string idPaciente)
+        {
+            if (!await _pacienteAccessService.PuedeAccederAsync(User, idPaciente)) return Forbid();
+
+            var detallePaciente = await _pacienteService.ObtenerDetallePorPacienteIdAsync(idPaciente);
+            return detallePaciente is null
+                ? NotFound(new { mensaje = "El perfil del paciente no existe." })
+                : Ok(detallePaciente);
+        }
         [HttpGet("usuario/{usuarioId}")]
         [Authorize]
         public async Task<IActionResult> ObtenerPerfilPorUsuarioId(string usuarioId)
@@ -84,12 +99,6 @@ namespace BeatWatch_BackEnd.Controllers
                 var usuarioIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
                                   ?? User.FindFirst("sub")?.Value;
 
-                // Validar seguridad: Solo el propio usuario, un Admin o un Cuidador pueden consultar el perfil
-                if (usuarioIdClaim != usuarioId && !User.IsInRole("Administrador") && !User.IsInRole("Cuidador"))
-                {
-                    return Forbid();
-                }
-
                 var detallePaciente = await _pacienteService.ObtenerDetallePorUsuarioIdAsync(usuarioId);
 
                 if (detallePaciente == null)
@@ -97,15 +106,17 @@ namespace BeatWatch_BackEnd.Controllers
                     return NotFound(new { mensaje = "El perfil del paciente aún no ha sido registrado." });
                 }
 
+                if (!await _pacienteAccessService.PuedeAccederAsync(User, detallePaciente.PacienteId)) return Forbid();
+
                 return Ok(detallePaciente);
             }
             catch (ArgumentException ex)
             {
                 return BadRequest(new { mensaje = ex.Message });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500, new { mensaje = "Error al obtener el perfil del paciente.", detalle = ex.Message });
+                return StatusCode(500, new { mensaje = "Error al obtener el perfil del paciente." });
             }
         }
 
@@ -115,6 +126,14 @@ namespace BeatWatch_BackEnd.Controllers
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
+
+            var detallePaciente = await _pacienteService.ObtenerDetallePorUsuarioIdAsync(usuarioId);
+            if (detallePaciente is null)
+            {
+                return NotFound(new { mensaje = "No se encontró el perfil del paciente para actualizar." });
+            }
+
+            if (!await _pacienteAccessService.PuedeAccederAsync(User, detallePaciente.PacienteId)) return Forbid();
 
             var actualizado = await _pacienteService.ActualizarPerfilPacienteAsync(usuarioId, dto);
 
@@ -169,9 +188,9 @@ namespace BeatWatch_BackEnd.Controllers
             {
                 return Conflict(new { mensaje = ex.Message });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500, new { mensaje = "Error al completar el registro del paciente.", detalle = ex.Message });
+                return StatusCode(500, new { mensaje = "Error al completar el registro del paciente." });
             }
         }
     }

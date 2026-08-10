@@ -218,6 +218,17 @@ namespace BeatWatch_BackEnd.Services
             };
         }
 
+        public async Task<DetallePacienteResponseDto?> ObtenerDetallePorPacienteIdAsync(string pacienteId)
+        {
+            if (!ObjectId.TryParse(pacienteId, out _))
+            {
+                throw new ArgumentException("El identificador de paciente no es válido.");
+            }
+
+            var paciente = await _context.Pacientes.Find(p => p.Id == pacienteId).FirstOrDefaultAsync();
+            return paciente is null ? null : await ObtenerDetallePorUsuarioIdAsync(paciente.UsuarioId);
+        }
+
 
         public async Task<bool> ActualizarPerfilPacienteAsync(string usuarioId, ActualizarPerfilPacienteDto dto)
         {
@@ -257,9 +268,6 @@ namespace BeatWatch_BackEnd.Services
 
             if (!string.IsNullOrWhiteSpace(dto.TipoSangre))
                 updates.Add(Builders<Paciente>.Update.Set(p => p.TipoSangre, dto.TipoSangre.Trim().ToUpperInvariant()));
-
-            if (dto.IdLicencia != null)
-                updates.Add(Builders<Paciente>.Update.Set(p => p.IdLicencia, dto.IdLicencia));
 
             if (dto.Fotografia != null)
             {
@@ -370,7 +378,7 @@ namespace BeatWatch_BackEnd.Services
                 IdLicencia = idLicencia,
                 Fotografia = fotoBytes,
                 FechaNacimiento = dto.FechaNacimiento,
-                Direccion = dto.Direccion
+                Direccion = dto.Direccion ?? string.Empty
             };
 
             try

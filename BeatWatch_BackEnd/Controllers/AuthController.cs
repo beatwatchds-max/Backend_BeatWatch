@@ -1,4 +1,5 @@
 using BeatWatch_BackEnd.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Mvc;
 using BeatWatch_BackEnd.infrescture;
@@ -7,6 +8,7 @@ namespace BeatWatch_BackEnd.Controllers;
 
 [ApiController]
 [Route("api/autenticacion")]
+[AllowAnonymous]
 public class AuthController : ControllerBase
 {
     private readonly IUsuarioService _usuarioService;

@@ -3,6 +3,7 @@ using BeatWatch_BackEnd.DTOs;
 using BeatWatch_BackEnd.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.Authorization;
 
 namespace BeatWatch_BackEnd.Controllers
 {
@@ -18,6 +19,7 @@ namespace BeatWatch_BackEnd.Controllers
         }
 
         [HttpPost("iniciar-sesion-movil")]
+        [AllowAnonymous]
         [EnableRateLimiting("LoginMovilPolicy")]
         public async Task<IActionResult> IniciarSesionMovil([FromBody] LoginMovilDto loginDto)
         {
