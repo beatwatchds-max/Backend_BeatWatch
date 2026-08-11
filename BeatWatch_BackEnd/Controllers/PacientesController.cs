@@ -1,5 +1,5 @@
 ﻿using BeatWatch_BackEnd.Dtos;
-using BeatWatch_BackEnd.DTOs;
+using BeatWatch_BackEnd.Dtos.pacientesDtos;
 using BeatWatch_BackEnd.infrescture;
 using BeatWatch_BackEnd.Services;
 using Microsoft.AspNetCore.Authorization;

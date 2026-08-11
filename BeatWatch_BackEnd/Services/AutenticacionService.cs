@@ -5,7 +5,7 @@ using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
 using BeatWatch_BackEnd.Models;
 using BeatWatch_BackEnd.Data;
-using BeatWatch_BackEnd.Dtos;
+using BeatWatch_BackEnd.Dtos.Login;
 
 namespace BeatWatch_BackEnd.Services
 {

@@ -1,4 +1,4 @@
-﻿using BeatWatch_BackEnd.Dtos;
+﻿using BeatWatch_BackEnd.Dtos.pacientesDtos;
 
 namespace BeatWatch_BackEnd.infrescture
 {

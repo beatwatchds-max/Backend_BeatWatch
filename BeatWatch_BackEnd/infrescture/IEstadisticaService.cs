@@ -1,4 +1,5 @@
-﻿using BeatWatch_BackEnd.Dtos;
+﻿using BeatWatch_BackEnd.Dtos.graficas;
+using BeatWatch_BackEnd.Dtos.pacientesDtos;
 using BeatWatch_BackEnd.Models;
 
 namespace BeatWatch_BackEnd.infrescture

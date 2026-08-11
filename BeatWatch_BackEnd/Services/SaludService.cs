@@ -1,5 +1,6 @@
 using BeatWatch_BackEnd.Data;
-using BeatWatch_BackEnd.Dtos;
+using BeatWatch_BackEnd.Dtos.arritmia;
+using BeatWatch_BackEnd.Dtos.historial;
 using BeatWatch_BackEnd.infrescture;
 using BeatWatch_BackEnd.Models;
 using MongoDB.Driver;

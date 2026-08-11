@@ -1,7 +1,7 @@
-using BeatWatch_BackEnd.Dtos;
 using BeatWatch_BackEnd.infrescture;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using BeatWatch_BackEnd.Dtos.arritmia;
 
 namespace BeatWatch_BackEnd.Controllers;
 

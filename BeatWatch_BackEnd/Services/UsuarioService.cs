@@ -1,8 +1,10 @@
 using BCrypt.Net;
 using BeatWatch_BackEnd.Data;
-using BeatWatch_BackEnd.Dtos;
+using BeatWatch_BackEnd.Dtos.cuidadores;
 using BeatWatch_BackEnd.infrescture;
 using BeatWatch_BackEnd.Models;
+using BeatWatch_BackEnd.Models.Registro;
+using BeatWatch_BackEnd.Models.Usuarios;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using System.Security.Cryptography;
