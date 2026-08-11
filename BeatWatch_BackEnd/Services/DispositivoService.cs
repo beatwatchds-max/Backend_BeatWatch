@@ -246,26 +246,7 @@ namespace BeatWatch_BackEnd.Services
             var result = await _context.Dispositivos.DeleteOneAsync(filter);
             return result.DeletedCount > 0;
         }
-        public async Task<bool> ActualizarMetricasAsync(string idDispositivo, ActualizarMetricasWearableDto dto)
-        {
-            if (!ObjectId.TryParse(idDispositivo, out _))
-            {
-                throw new ArgumentException("El identificador del dispositivo no tiene un formato válido.");
-            }
-
-            var filter = Builders<Dispositivo>.Filter.Eq(d => d.Id, idDispositivo);
-
-            var update = Builders<Dispositivo>.Update
-                .Set("MetricasWearable.FrecuenciaCardiacaBpm", dto.FrecuenciaCardiacaBpm)
-                .Set("MetricasWearable.SaturacionOxigenoSpO2", dto.SaturacionOxigenoSpO2)
-                .Set("MetricasWearable.Pasos", dto.Pasos)
-                .Set(d => d.MedicionSolicitadaEn, null)
-                .Set(d => d.UltimaSincronizacion, DateTime.UtcNow);
-
-            var result = await _context.Dispositivos.UpdateOneAsync(filter, update);
-
-            return result.MatchedCount > 0;
-        }
+       
 
         public async Task<Dispositivo?> ObtenerDispositivoAsync(string idDispositivo)
         {
@@ -277,31 +258,6 @@ namespace BeatWatch_BackEnd.Services
             return await _context.Dispositivos.Find(d => d.Id == idDispositivo && d.Activo).FirstOrDefaultAsync();
         }
 
-        public async Task<bool> SolicitarMedicionAsync(string idDispositivo)
-        {
-            if (!ObjectId.TryParse(idDispositivo, out _))
-            {
-                throw new ArgumentException("El identificador del dispositivo no tiene un formato válido.");
-            }
-
-            var update = Builders<Dispositivo>.Update.Set(d => d.MedicionSolicitadaEn, DateTime.UtcNow);
-            var result = await _context.Dispositivos.UpdateOneAsync(d => d.Id == idDispositivo && d.Activo, update);
-            return result.MatchedCount > 0;
-        }
-
-        public async Task<object> ObtenerComandosAsync(string idDispositivo, string watchAccessToken)
-        {
-            var dispositivo = await ObtenerDispositivoAsync(idDispositivo);
-            if (dispositivo is null || string.IsNullOrWhiteSpace(watchAccessToken) || dispositivo.WatchAccessToken != watchAccessToken)
-            {
-                throw new UnauthorizedAccessException("Las credenciales del wearable no son válidas.");
-            }
-
-            return new
-            {
-                comando = dispositivo.MedicionSolicitadaEn.HasValue ? "SOLICITAR_MEDICION" : null,
-                solicitadoEn = dispositivo.MedicionSolicitadaEn
-            };
-        }
+      
     }
 }
