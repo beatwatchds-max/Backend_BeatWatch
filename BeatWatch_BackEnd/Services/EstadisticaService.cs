@@ -1,4 +1,4 @@
-﻿using BeatWatch_BackEnd.Data;
+using BeatWatch_BackEnd.Data;
 using BeatWatch_BackEnd.Dtos.graficas;
 using BeatWatch_BackEnd.Dtos.pacientesDtos;
 using BeatWatch_BackEnd.infrescture;
@@ -19,13 +19,20 @@ namespace BeatWatch_BackEnd.Services
         #region Métodos de consulta pasiente y estadísticas
 
 
-        public async Task<List<PacienteEstadisticaResumenDto>> ObtenerPacientesUnicosConUltimoRegistroAsync()
+        public async Task<List<PacienteEstadisticaResumenDto>> ObtenerPacientesUnicosConUltimoRegistroAsync(string idLicencia)
         {
-            // Pipeline de Agregación en MongoDB:
-            // 1. Sort: Ordena registros por Fecha descendente
-            // 2. Group: Agrupa por IdPaciente y toma la primera Fecha (que es la más reciente)
-            // 3. Project: Mapea la salida a la estructura esperada
+            var pacientesLicenciaIds = await _context.Pacientes
+                .Find(p => p.IdLicencia == idLicencia)
+                .Project(p => p.Id)
+                .ToListAsync();
+
+            if (!pacientesLicenciaIds.Any())
+            {
+                return new List<PacienteEstadisticaResumenDto>();
+            }
+
             var pipeline = _context.EstadisticasDiarias.Aggregate()
+                .Match(e => pacientesLicenciaIds.Contains(e.IdPaciente))
                 .SortByDescending(e => e.Fecha)
                 .Group(e => e.IdPaciente, g => new
                 {

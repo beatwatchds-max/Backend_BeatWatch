@@ -1,4 +1,4 @@
-﻿using BeatWatch_BackEnd.Dtos.dispositivos;
+using BeatWatch_BackEnd.Dtos.dispositivos;
 using BeatWatch_BackEnd.Dtos.pacientesDtos;
 using BeatWatch_BackEnd.infrescture;
 using BeatWatch_BackEnd.Services;
@@ -124,9 +124,9 @@ namespace BeatWatch_BackEnd.Controllers
             {
                 return BadRequest(new { mensaje = ex.Message });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500, new { mensaje = "Error interno al consultar dispositivos.", detalle = ex.Message });
+                return StatusCode(500, new { mensaje = "Error interno al consultar dispositivos." });
             }
         }
         [Authorize]
