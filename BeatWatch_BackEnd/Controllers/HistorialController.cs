@@ -20,9 +20,7 @@ public class HistorialController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> ObtenerArritmias(
-        [FromQuery, Required, RegularExpression("^[a-fA-F0-9]{24}$")] string idPaciente,
-        CancellationToken cancellationToken)
+    public async Task<IActionResult> ObtenerArritmias([FromQuery, Required, RegularExpression("^[a-fA-F0-9]{24}$")] string idPaciente, CancellationToken cancellationToken)
     {
         if (!await _pacienteAccessService.PuedeAccederAsync(User, idPaciente)) return Forbid();
         var arritmias = await _saludService.ObtenerHistorialArritmiasAsync(idPaciente, cancellationToken);

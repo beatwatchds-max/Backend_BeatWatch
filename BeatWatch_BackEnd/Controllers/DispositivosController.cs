@@ -1,4 +1,5 @@
-﻿using BeatWatch_BackEnd.Dtos;
+﻿using BeatWatch_BackEnd.Dtos.dispositivos;
+using BeatWatch_BackEnd.Dtos.pacientesDtos;
 using BeatWatch_BackEnd.infrescture;
 using BeatWatch_BackEnd.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -64,9 +65,7 @@ namespace BeatWatch_BackEnd.Controllers
         [AllowAnonymous]
         [EnableRateLimiting("device-pairing")]
         [HttpGet("emparejamiento/{idSesion}/estado")]
-        public async Task<IActionResult> ObtenerEstadoEmparejamiento(
-            string idSesion,
-            [FromHeader(Name = "X-Watch-Secret")] string watchSecret)
+        public async Task<IActionResult> ObtenerEstadoEmparejamiento(string idSesion, [FromHeader(Name = "X-Watch-Secret")] string watchSecret)
         {
             try
             {

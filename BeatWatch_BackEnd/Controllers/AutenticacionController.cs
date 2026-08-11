@@ -1,9 +1,9 @@
 ﻿using BeatWatch_BackEnd.Dtos;
-using BeatWatch_BackEnd.DTOs;
 using BeatWatch_BackEnd.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Authorization;
+using BeatWatch_BackEnd.Dtos.Login;
 
 namespace BeatWatch_BackEnd.Controllers
 {

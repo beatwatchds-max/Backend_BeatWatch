@@ -1,5 +1,5 @@
 ﻿using BeatWatch_BackEnd.Dtos;
-using BeatWatch_BackEnd.DTOs;
+using BeatWatch_BackEnd.Dtos.pacientesDtos;
 using BeatWatch_BackEnd.infrescture;
 using BeatWatch_BackEnd.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -80,6 +80,7 @@ namespace BeatWatch_BackEnd.Controllers
                 return BadRequest(new { mensaje = ex.Message });
             }
         }
+
         [HttpGet("perfil/paciente/{idPaciente}")]
         [Authorize(Roles = "Administrador,Cuidador,Paciente")]
         public async Task<IActionResult> ObtenerPerfilPorPacienteId(string idPaciente)
@@ -91,6 +92,8 @@ namespace BeatWatch_BackEnd.Controllers
                 ? NotFound(new { mensaje = "El perfil del paciente no existe." })
                 : Ok(detallePaciente);
         }
+
+
         [HttpGet("usuario/{usuarioId}")]
         [Authorize]
         public async Task<IActionResult> ObtenerPerfilPorUsuarioId(string usuarioId)
@@ -198,11 +201,7 @@ namespace BeatWatch_BackEnd.Controllers
 
         [Authorize]
         [HttpGet("{idPaciente}/mediciones")]
-        public async Task<IActionResult> ObtenerHistorialMediciones(
-    string idPaciente,
-    [FromQuery] DateTime? desde = null,
-    [FromQuery] DateTime? hasta = null,
-    [FromQuery] int limite = 100)
+        public async Task<IActionResult> ObtenerHistorialMediciones(string idPaciente,[FromQuery] DateTime? desde = null,[FromQuery] DateTime? hasta = null, [FromQuery] int limite = 100)
         {
             try
             {

@@ -1,4 +1,4 @@
-using BeatWatch_BackEnd.Dtos;
+using BeatWatch_BackEnd.Dtos.dispositivos;
 using BeatWatch_BackEnd.Models;
 
 namespace BeatWatch_BackEnd.infrescture
