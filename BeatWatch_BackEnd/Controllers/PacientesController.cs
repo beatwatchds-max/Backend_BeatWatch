@@ -195,5 +195,39 @@ namespace BeatWatch_BackEnd.Controllers
                 return StatusCode(500, new { mensaje = "Error al completar el registro del paciente." });
             }
         }
+
+        [Authorize]
+        [HttpGet("{idPaciente}/mediciones")]
+        public async Task<IActionResult> ObtenerHistorialMediciones(
+    string idPaciente,
+    [FromQuery] DateTime? desde = null,
+    [FromQuery] DateTime? hasta = null,
+    [FromQuery] int limite = 100)
+        {
+            try
+            {
+                // Validar acceso del usuario al paciente
+                if (!await _pacienteAccessService.PuedeAccederAsync(User, idPaciente))
+                {
+                    return Forbid();
+                }
+
+                var mediciones = await _medicionService.ObtenerHistorialPacienteAsync(idPaciente, desde, hasta, limite);
+
+                return Ok(new HistorialMedicionesResponseDto
+                {
+                    Success = true,
+                    Mediciones = mediciones
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { success = false, mensaje = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, mensaje = "Error al obtener el historial de mediciones.", detalle = ex.Message });
+            }
+        }
     }
 }
