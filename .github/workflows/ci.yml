@@ -2,7 +2,7 @@ name: DevSecOps CI Pipeline
 
 on:
   push:
-    branches: [ main, master, rama-jessuikl ]
+    branches: [ main, master, rama-jessuikl, Rama-tobi ]
   pull_request:
     branches: [ main, master ]
 
