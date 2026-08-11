@@ -1,6 +1,7 @@
 ﻿using BeatWatch_BackEnd.Models;
 using BeatWatch_BackEnd.Data;
 using MongoDB.Driver;
+using BeatWatch_BackEnd.Dtos.licencia;
 
 namespace BeatWatch_BackEnd.Services
 {

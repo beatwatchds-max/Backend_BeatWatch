@@ -2,7 +2,7 @@ name: DevSecOps CI Pipeline
 
 on:
   push:
-    branches: [ main, master, rama-jessuikl ]
+    branches: [ main, master, rama-jessuikl, Rama-tobi, rama-tobi ]
   pull_request:
     branches: [ main, master ]
 
@@ -19,7 +19,6 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
-        # Gitleaks compares the pushed range, so its base commit must be available.
         fetch-depth: 0
 
     - name: Setup .NET SDK
@@ -27,10 +26,6 @@ jobs:
       with:
         dotnet-version: '10.0.x'
 
-    # The current test project contains tests that still use PagoSimuladoDto,
-    # while the backend now expects ActivarLicenciaGratuitaDto. Because this
-    # change is intentionally limited to the pipeline, CI validates the
-    # production backend project and does not compile the stale test project.
     - name: Restore dependencies
       run: dotnet restore BeatWatch_BackEnd/BeatWatch_BackEnd.csproj
 
@@ -56,9 +51,6 @@ jobs:
 
   deployment-smoke-test:
     name: Container Deployment Smoke Test
-    # Temporarily disabled by request. Keeping the job makes the pipeline
-    # visibly report it as skipped instead of deleting the deployment stage.
-    if: ${{ false }}
     needs: test-and-scan
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -105,9 +97,9 @@ jobs:
 
   publish-image:
     name: Publish Production Image
-    # Temporarily disabled by request.
-    if: ${{ false }}
     needs: deployment-smoke-test
+    env:
+      SHOULD_PUBLISH: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'push' && github.ref == 'refs/heads/master') }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: production
@@ -121,7 +113,11 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
     - name: Login to GitHub Container Registry
+      if: env.SHOULD_PUBLISH == 'true'
       uses: docker/login-action@v3
       with:
         registry: ghcr.io
@@ -143,13 +139,14 @@ jobs:
       with:
         context: .
         file: BeatWatch_BackEnd/Dockerfile
-        push: true
+        push: ${{ env.SHOULD_PUBLISH == 'true' }}
         tags: ${{ steps.metadata.outputs.tags }}
         labels: ${{ steps.metadata.outputs.labels }}
         sbom: true
         provenance: mode=max
 
     - name: Attest build provenance
+      if: env.SHOULD_PUBLISH == 'true'
       uses: actions/attest-build-provenance@v2
       with:
         subject-name: ghcr.io/${{ github.repository_owner }}/beatwatch-backend

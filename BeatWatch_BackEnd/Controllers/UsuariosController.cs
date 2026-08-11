@@ -1,4 +1,4 @@
-﻿using BeatWatch_BackEnd.Dtos;
+﻿using BeatWatch_BackEnd.Dtos.cuidadores;
 using BeatWatch_BackEnd.infrescture;
 using BeatWatch_BackEnd.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -20,11 +20,7 @@ namespace BeatWatch_BackEnd.Controllers
 
         [HttpGet]
         [Authorize(Roles = "Administrador")]
-        public async Task<IActionResult> ObtenerUsuarios(
-      [FromQuery] int page = 1,
-      [FromQuery] int pageSize = 10,
-      [FromQuery] string? searchName = null,
-       [FromQuery] string? searchEmail = null)
+        public async Task<IActionResult> ObtenerUsuarios([FromQuery] int page = 1,[FromQuery] int pageSize = 10,[FromQuery] string? searchName = null, [FromQuery] string? searchEmail = null)
         {
             // 1. Validaciones básicas de paginación
             if (page < 1) page = 1;
@@ -71,10 +67,7 @@ namespace BeatWatch_BackEnd.Controllers
 
         [Authorize(Roles = "Administrador")]
         [HttpPut("{id}/cuidadores")]
-        public async Task<IActionResult> ActualizarCuidadores(
-            string id,
-            [FromBody] ActualizarCuidadoresDto request,
-            CancellationToken cancellationToken)
+        public async Task<IActionResult> ActualizarCuidadores(string id,[FromBody] ActualizarCuidadoresDto request, CancellationToken cancellationToken)
         {
             try
             {
@@ -143,6 +136,7 @@ namespace BeatWatch_BackEnd.Controllers
                 return StatusCode(500, new { message = "Error al registrar el cuidador." });
             }
         }
+
         // 🟢 GET /api/Usuarios/cuidadores-disponibles
         [HttpGet("cuidadores-disponibles")]
         [Authorize(Roles = "Administrador,Cuidador")]

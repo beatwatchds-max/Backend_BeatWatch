@@ -1,8 +1,9 @@
-using BeatWatch_BackEnd.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Mvc;
 using BeatWatch_BackEnd.infrescture;
+using BeatWatch_BackEnd.Models.LoginR;
+using BeatWatch_BackEnd.Models.Registro;
 
 namespace BeatWatch_BackEnd.Controllers;
 
@@ -27,6 +28,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("registrar")]
+    [EnableRateLimiting("login")]
     public async Task<ActionResult> Registrar([FromBody] RegistroRequest request)
     {
         try

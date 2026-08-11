@@ -1,4 +1,4 @@
-﻿using BeatWatch_BackEnd.Models;
+﻿using BeatWatch_BackEnd.Dtos.licencia;
 using BeatWatch_BackEnd.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

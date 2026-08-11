@@ -1,5 +1,5 @@
-﻿using BeatWatch_BackEnd.Dtos;
-using BeatWatch_BackEnd.DTOs;
+using BeatWatch_BackEnd.Dtos;
+using BeatWatch_BackEnd.Dtos.pacientesDtos;
 using BeatWatch_BackEnd.infrescture;
 using BeatWatch_BackEnd.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -14,11 +14,13 @@ namespace BeatWatch_BackEnd.Controllers
     {
         private readonly IPacienteService _pacienteService;
         private readonly IPacienteAccessService _pacienteAccessService;
+        private readonly IMedicionService _medicionService;
 
-        public PacientesController(IPacienteService pacienteService, IPacienteAccessService pacienteAccessService)
+        public PacientesController(IPacienteService pacienteService, IPacienteAccessService pacienteAccessService, IMedicionService medicionService)
         {
             _pacienteService = pacienteService;
             _pacienteAccessService = pacienteAccessService;
+            _medicionService = medicionService;
         }
 
         // 1. POST /api/Pacientes/registrar
@@ -78,6 +80,7 @@ namespace BeatWatch_BackEnd.Controllers
                 return BadRequest(new { mensaje = ex.Message });
             }
         }
+
         [HttpGet("perfil/paciente/{idPaciente}")]
         [Authorize(Roles = "Administrador,Cuidador,Paciente")]
         public async Task<IActionResult> ObtenerPerfilPorPacienteId(string idPaciente)
@@ -89,6 +92,8 @@ namespace BeatWatch_BackEnd.Controllers
                 ? NotFound(new { mensaje = "El perfil del paciente no existe." })
                 : Ok(detallePaciente);
         }
+
+
         [HttpGet("usuario/{usuarioId}")]
         [Authorize]
         public async Task<IActionResult> ObtenerPerfilPorUsuarioId(string usuarioId)
@@ -114,9 +119,9 @@ namespace BeatWatch_BackEnd.Controllers
             {
                 return BadRequest(new { mensaje = ex.Message });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500, new { mensaje = "Error al obtener el perfil del paciente.", detalle = ex.Message });
+                return StatusCode(500, new { mensaje = "Error al obtener el perfil del paciente." });
             }
         }
 
@@ -191,6 +196,36 @@ namespace BeatWatch_BackEnd.Controllers
             catch (Exception)
             {
                 return StatusCode(500, new { mensaje = "Error al completar el registro del paciente." });
+            }
+        }
+
+        [Authorize]
+        [HttpGet("{idPaciente}/mediciones")]
+        public async Task<IActionResult> ObtenerHistorialMediciones(string idPaciente,[FromQuery] DateTime? desde = null,[FromQuery] DateTime? hasta = null, [FromQuery] int limite = 100)
+        {
+            try
+            {
+                // Validar acceso del usuario al paciente
+                if (!await _pacienteAccessService.PuedeAccederAsync(User, idPaciente))
+                {
+                    return Forbid();
+                }
+
+                var mediciones = await _medicionService.ObtenerHistorialPacienteAsync(idPaciente, desde, hasta, limite);
+
+                return Ok(new HistorialMedicionesResponseDto
+                {
+                    Success = true,
+                    Mediciones = mediciones
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { success = false, mensaje = ex.Message });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new { success = false, mensaje = "Error al obtener el historial de mediciones." });
             }
         }
     }

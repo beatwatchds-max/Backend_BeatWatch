@@ -1,5 +1,6 @@
 using BeatWatch_BackEnd.Configuration;
 using BeatWatch_BackEnd.Models;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
 
@@ -7,19 +8,21 @@ namespace BeatWatch_BackEnd.Data
 {
     public class MongoDbContext
     {
-        private readonly IMongoDatabase _database = null!;
+        private readonly IMongoDatabase _database;
+        private readonly ILogger<MongoDbContext> _logger;
 
-    
-        public MongoDbContext()
+        protected MongoDbContext()
         {
+            _database = null!;
+            _logger = null!;
         }
 
-        public MongoDbContext(IOptions<MongoDbSettings> settings)
+        public MongoDbContext(IOptions<MongoDbSettings> settings, ILogger<MongoDbContext> logger)
         {
+            _logger = logger;
             var client = new MongoClient(settings.Value.ConnectionString);
             _database = client.GetDatabase(settings.Value.DatabaseName);
 
-         
             CrearIndices();
         }
 
@@ -32,8 +35,8 @@ namespace BeatWatch_BackEnd.Data
         public virtual IMongoCollection<ActividadDiaria> ActividadesDiarias => _database.GetCollection<ActividadDiaria>("ActividadesDiarias");
         public virtual IMongoCollection<SesionEmparejamiento> SesionesEmparejamiento => _database.GetCollection<SesionEmparejamiento>("SesionesEmparejamiento");
         public virtual IMongoCollection<EstadisticaDiaria> EstadisticasDiarias => _database.GetCollection<EstadisticaDiaria>("EstadisticaDiaria");
+        public virtual IMongoCollection<MedicionFrecuenciaCardiaca> MedicionesFrecuenciaCardiaca => _database.GetCollection<MedicionFrecuenciaCardiaca>("MedicionesFrecuenciaCardiaca");
 
-      
         private void CrearIndices()
         {
             try
@@ -57,11 +60,11 @@ namespace BeatWatch_BackEnd.Data
             catch (MongoCommandException ex)
             {
                 // Loggear advertencia (por ejemplo con ILogger o Console)
-                Console.WriteLine($"Nota de Índice: {ex.Message}");
+                _logger.LogWarning("Nota de Índice: {Message}", ex.Message);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error general al crear índices: {ex.Message}");
+                _logger.LogError(ex, "Error al crear índices de la base de datos");
             }
         }
     }
