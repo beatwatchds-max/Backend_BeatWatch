@@ -14,11 +14,13 @@ namespace BeatWatch_BackEnd.Controllers
     {
         private readonly IPacienteService _pacienteService;
         private readonly IPacienteAccessService _pacienteAccessService;
+        private readonly IMedicionService _medicionService;
 
-        public PacientesController(IPacienteService pacienteService, IPacienteAccessService pacienteAccessService)
+        public PacientesController(IPacienteService pacienteService, IPacienteAccessService pacienteAccessService, IMedicionService medicionService)
         {
             _pacienteService = pacienteService;
             _pacienteAccessService = pacienteAccessService;
+            _medicionService = medicionService;
         }
 
         // 1. POST /api/Pacientes/registrar

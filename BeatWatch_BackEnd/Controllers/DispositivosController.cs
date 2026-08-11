@@ -13,11 +13,13 @@ namespace BeatWatch_BackEnd.Controllers
     {
         private readonly IDispositivoService _dispositivoService;
         private readonly IPacienteAccessService _pacienteAccessService;
+        private readonly IMedicionService _medicionService;
 
-        public DispositivosController(IDispositivoService dispositivoService, IPacienteAccessService pacienteAccessService)
+        public DispositivosController(IDispositivoService dispositivoService, IPacienteAccessService pacienteAccessService, IMedicionService medicionService)
         {
             _dispositivoService = dispositivoService;
             _pacienteAccessService = pacienteAccessService;
+            _medicionService = medicionService;
         }
 
         // 🟢 1. Endpoint llamado por el Reloj para iniciar la sesión QR
@@ -175,6 +177,35 @@ namespace BeatWatch_BackEnd.Controllers
                 return BadRequest(new { mensaje = ex.Message });
             }
         }
-     
+
+        [Authorize]
+        [HttpPost("{idDispositivo}/mediciones")]
+        public async Task<IActionResult> RegistrarMedicion(string idDispositivo, [FromBody] RegistrarMedicionDto dto)
+        {
+            try
+            {
+                var idMedicion = await _medicionService.RegistrarMedicionAsync(idDispositivo, dto);
+
+                return StatusCode(201, new
+                {
+                    success = true,
+                    idMedicion = idMedicion
+                });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { success = false, mensaje = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { success = false, mensaje = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, mensaje = "Error al registrar la medición.", detalle = ex.Message });
+            }
+        }
+
+
     }
 }
