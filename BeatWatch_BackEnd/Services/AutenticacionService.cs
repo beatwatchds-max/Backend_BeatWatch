@@ -20,6 +20,7 @@ namespace BeatWatch_BackEnd.Services
             _config = config;
         }
 
+      
         public async Task<LoginMovilResponseDto?> ValidarTokenYGenerarJwtAsync(string tokenMovil)
         {
             var usuario = await _context.Usuarios
@@ -144,9 +145,10 @@ namespace BeatWatch_BackEnd.Services
                 PerfilCompletado = perfilCompletado,
                 DiagnosticoCompletado = diagnosticoCompletado,
                 DispositivoVinculado = dispositivoVinculado,
-                RegistroPacienteCompletado = registroPacienteCompletado, // 👈 Retornamos la nueva bandera
+                RegistroPacienteCompletado = registroPacienteCompletado, 
                 PacienteId = pacienteId
             };
         }
+     
     }
 }

@@ -21,7 +21,10 @@ public class UsuarioService : IUsuarioService
         _context = context;
     }
 
-    // Método privado para generar y garantizar la unicidad del token de 9 dígitos
+    /// <summary>
+    /// Genera un token numérico único de 9 dígitos para el campo TokenMovil.
+    /// </summary>
+    
     private async Task<string> GenerarTokenNumericoUnicoAsync()
     {
         string tokenGenerado;
@@ -42,6 +45,7 @@ public class UsuarioService : IUsuarioService
         return tokenGenerado;
     }
 
+    #region registro y autenticación
     public async Task<Usuario> RegistrarAsync(RegistroRequest request)
     {
         // 1. Verificación segura de correo existente
@@ -90,7 +94,9 @@ public class UsuarioService : IUsuarioService
 
         return usuario;
     }
+    #endregion
 
+    #region restableimiento de contraseña
     public async Task<string?> CrearTokenRestablecimientoAsync(string correo, CancellationToken cancellationToken = default)
     {
         var normalizedEmail = correo.Trim().ToLowerInvariant();
@@ -131,14 +137,10 @@ public class UsuarioService : IUsuarioService
     }
 
     private static string HashToken(string token) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
+    #endregion
 
-    // coreccion
-    public async Task<ResultadoPaginado<Usuario>> ObtenerUsuariosPaginadosAsync(
-      int page,
-      int pageSize,
-      string? searchName,
-      string? searchEmail,
-      string? idLicencia)
+    #region paginación y búsqueda
+    public async Task<ResultadoPaginado<Usuario>> ObtenerUsuariosPaginadosAsync(int page,int pageSize,string? searchName,string? searchEmail, string? idLicencia)
     {
         var builder = Builders<Usuario>.Filter;
         var filtro = builder.Empty;
@@ -216,6 +218,7 @@ public class UsuarioService : IUsuarioService
         };
     }
 
+    #endregion
 
     public async Task<bool> DesactivarAsync(string id, CancellationToken cancellationToken = default)
     {
@@ -232,10 +235,8 @@ public class UsuarioService : IUsuarioService
         return result.MatchedCount == 1;
     }
 
-    public async Task<bool> ActualizarCuidadoresAsync(
-        string id,
-        IReadOnlyCollection<string> cuidadores,
-        CancellationToken cancellationToken = default)
+    #region cuidadores
+    public async Task<bool> ActualizarCuidadoresAsync(string id,IReadOnlyCollection<string> cuidadores, CancellationToken cancellationToken = default)
     {
         var usuarioId = ValidarObjectId(id, nameof(id));
         ArgumentNullException.ThrowIfNull(cuidadores);
@@ -252,10 +253,7 @@ public class UsuarioService : IUsuarioService
         return result.MatchedCount == 1;
     }
 
-    public async Task<bool> DesvincularCuidadorAsync(
-        string id,
-        string cuidadorId,
-        CancellationToken cancellationToken = default)
+    public async Task<bool> DesvincularCuidadorAsync(string id,string cuidadorId,  CancellationToken cancellationToken = default)
     {
         var usuarioId = ValidarObjectId(id, nameof(id));
         var cuidadorIdValidado = ValidarObjectId(cuidadorId, nameof(cuidadorId));
@@ -352,4 +350,6 @@ public class UsuarioService : IUsuarioService
 
         return usuarios;
     }
+
+    #endregion
 }

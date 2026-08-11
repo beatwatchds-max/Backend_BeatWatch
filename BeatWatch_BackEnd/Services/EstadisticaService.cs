@@ -16,6 +16,8 @@ namespace BeatWatch_BackEnd.Services
         {
             _context = context;
         }
+        #region Métodos de consulta pasiente y estadísticas
+
 
         public async Task<List<PacienteEstadisticaResumenDto>> ObtenerPacientesUnicosConUltimoRegistroAsync()
         {
@@ -39,10 +41,7 @@ namespace BeatWatch_BackEnd.Services
             return await pipeline.ToListAsync();
         }
 
-        public async Task<List<EstadisticaDiaria>> ObtenerEstadisticasPorPacienteAsync(
-      string idPaciente,
-      DateTime? fechaInicio = null,
-      DateTime? fechaFin = null)
+        public async Task<List<EstadisticaDiaria>> ObtenerEstadisticasPorPacienteAsync(string idPaciente,DateTime? fechaInicio = null, DateTime? fechaFin = null)
         {
             if (string.IsNullOrWhiteSpace(idPaciente))
             {
@@ -82,12 +81,10 @@ namespace BeatWatch_BackEnd.Services
 
             return ultimaEstadistica != null ? new List<EstadisticaDiaria> { ultimaEstadistica } : new List<EstadisticaDiaria>();
         }
+        #endregion
 
-        public async Task<GraficaBpmResponseDto> ObtenerGraficaBpmAsync(
-     string idPaciente,
-     DateTime? fechaInicio = null,
-     DateTime? fechaFin = null,
-     int dias = 7)
+        #region Métodos de consulta para gráficas y series de datos
+        public async Task<GraficaBpmResponseDto> ObtenerGraficaBpmAsync(string idPaciente,DateTime? fechaInicio = null, DateTime? fechaFin = null,int dias = 7)
         {
             if (string.IsNullOrWhiteSpace(idPaciente))
             {
@@ -132,11 +129,8 @@ namespace BeatWatch_BackEnd.Services
                 Puntos = puntos
             };
         }
-        public async Task<GraficaEpisodiosResponseDto> ObtenerGraficaEpisodiosAsync(
-       string idPaciente,
-       DateTime? fechaInicio = null,
-       DateTime? fechaFin = null,
-       int dias = 7)
+        ///
+        public async Task<GraficaEpisodiosResponseDto> ObtenerGraficaEpisodiosAsync(string idPaciente,DateTime? fechaInicio = null,DateTime? fechaFin = null, int dias = 7)
         {
             if (string.IsNullOrWhiteSpace(idPaciente))
             {
@@ -181,12 +175,8 @@ namespace BeatWatch_BackEnd.Services
                 Episodios = episodios
             };
         }
-
-        public async Task<GraficaSeriesResponseDto> ObtenerGraficaSeriesAsync(
-    string idPaciente,
-    DateTime? fechaInicio = null,
-    DateTime? fechaFin = null,
-    string? metricas = null)
+        ///
+        public async Task<GraficaSeriesResponseDto> ObtenerGraficaSeriesAsync(string idPaciente,DateTime? fechaInicio = null,DateTime? fechaFin = null, string? metricas = null)
         {
             if (string.IsNullOrWhiteSpace(idPaciente))
             {
@@ -249,11 +239,7 @@ namespace BeatWatch_BackEnd.Services
             };
         }
 
-        public async Task<GraficaSeriesColumnarResponseDto> ObtenerGraficaSeriesColumnarAsync(
-    string idPaciente,
-    DateTime? fechaInicio = null,
-    DateTime? fechaFin = null,
-    string? metricas = null)
+        public async Task<GraficaSeriesColumnarResponseDto> ObtenerGraficaSeriesColumnarAsync(string idPaciente,DateTime? fechaInicio = null,DateTime? fechaFin = null, string? metricas = null)
         {
             if (string.IsNullOrWhiteSpace(idPaciente))
             {
@@ -344,11 +330,8 @@ namespace BeatWatch_BackEnd.Services
                 Series = dictSeries
             };
         }
-        public async Task<GraficaResumenResponseDto> ObtenerResumenKpiAsync(
-    string idPaciente,
-    DateTime? fechaInicio = null,
-    DateTime? fechaFin = null,
-    int dias = 30)
+
+        public async Task<GraficaResumenResponseDto> ObtenerResumenKpiAsync(string idPaciente,DateTime? fechaInicio = null,DateTime? fechaFin = null, int dias = 30)
         {
             if (string.IsNullOrWhiteSpace(idPaciente))
             {
@@ -408,6 +391,6 @@ namespace BeatWatch_BackEnd.Services
                 PromedioHorasSueno = promedioSueno
             };
         }
-
+        #endregion
     }
 }

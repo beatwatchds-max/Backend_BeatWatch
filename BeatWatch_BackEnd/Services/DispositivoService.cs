@@ -15,7 +15,7 @@ namespace BeatWatch_BackEnd.Services
         {
             _context = context;
         }
-
+        #region Emparejamiento y auxiliares 
         public async Task<SesionEmparejamientoResponseDto> CrearSesionEmparejamientoAsync(CrearSesionEmparejamientoDto dto)
         {
             var idSesion = Guid.NewGuid().ToString("D");
@@ -179,7 +179,9 @@ namespace BeatWatch_BackEnd.Services
                 }
             };
         }
+        #endregion
 
+        #region Consultas de dispositivos
         public async Task<List<Dispositivo>> ObtenerDispositivosPorPacienteAsync(string? idPaciente)
         {
             var filterBuilder = Builders<Dispositivo>.Filter;
@@ -221,6 +223,18 @@ namespace BeatWatch_BackEnd.Services
             return await _context.Dispositivos.Find(filter).ToListAsync();
         }
 
+        public async Task<Dispositivo?> ObtenerDispositivoAsync(string idDispositivo)
+        {
+            if (!ObjectId.TryParse(idDispositivo, out _))
+            {
+                throw new ArgumentException("El identificador del dispositivo no tiene un formato válido.");
+            }
+
+            return await _context.Dispositivos.Find(d => d.Id == idDispositivo && d.Activo).FirstOrDefaultAsync();
+        }
+        #endregion
+
+        #region actualizacion y eliminación de dispositivos
         public async Task<bool> ActualizarAliasAsync(string id, string nuevoAlias)
         {
             if (!ObjectId.TryParse(id, out _))
@@ -247,17 +261,8 @@ namespace BeatWatch_BackEnd.Services
             return result.DeletedCount > 0;
         }
        
+       
+        #endregion
 
-        public async Task<Dispositivo?> ObtenerDispositivoAsync(string idDispositivo)
-        {
-            if (!ObjectId.TryParse(idDispositivo, out _))
-            {
-                throw new ArgumentException("El identificador del dispositivo no tiene un formato válido.");
-            }
-
-            return await _context.Dispositivos.Find(d => d.Id == idDispositivo && d.Activo).FirstOrDefaultAsync();
-        }
-
-      
     }
 }

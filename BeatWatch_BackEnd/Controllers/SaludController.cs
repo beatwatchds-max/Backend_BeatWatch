@@ -23,9 +23,7 @@ public class SaludController : ControllerBase
     /// Formulario manual de la App / Expediente Clínico (Registra la patología/condición de arritmia)
     /// </summary>
     [HttpPost("arritmia")]
-    public async Task<IActionResult> RegistrarArritmia(
-        [FromBody] RegistrarArritmiaDto solicitud,
-        CancellationToken cancellationToken)
+    public async Task<IActionResult> RegistrarArritmia([FromBody] RegistrarArritmiaDto solicitud, CancellationToken cancellationToken)
     {
         if (!await _pacienteAccessService.PuedeAccederAsync(User, solicitud.IdPaciente)) return Forbid();
         await _saludService.RegistrarArritmiaAsync(solicitud, cancellationToken);
@@ -36,9 +34,7 @@ public class SaludController : ControllerBase
     /// Alerta enviada por el Wearable en tiempo real (Episodio/Pico anormal en reposo)
     /// </summary>
     [HttpPost("episodio-arritmia")]
-    public async Task<IActionResult> RegistrarAlertaFrecuencia(
-        [FromBody] RegistrarAlertaFrecuenciaDto solicitud,
-        CancellationToken cancellationToken)
+    public async Task<IActionResult> RegistrarAlertaFrecuencia([FromBody] RegistrarAlertaFrecuenciaDto solicitud,CancellationToken cancellationToken)
     {
         if (!await _pacienteAccessService.PuedeAccederAsync(User, solicitud.IdPaciente)) return Forbid();
         await _saludService.RegistrarAlertaFrecuenciaAsync(solicitud, cancellationToken);
@@ -49,9 +45,7 @@ public class SaludController : ControllerBase
     /// HU6.2: Sincronización Diaria de Actividad Física y Sueño desde la App Móvil/Wearable
     /// </summary>
     [HttpPost("actividad")]
-    public async Task<IActionResult> RegistrarActividadDiaria(
-        [FromBody] RegistrarActividadDiariaDto solicitud,
-        CancellationToken cancellationToken)
+    public async Task<IActionResult> RegistrarActividadDiaria([FromBody] RegistrarActividadDiariaDto solicitud,CancellationToken cancellationToken)
     {
         if (!await _pacienteAccessService.PuedeAccederAsync(User, solicitud.IdPaciente)) return Forbid();
         await _saludService.RegistrarActividadDiariaAsync(solicitud, cancellationToken);
