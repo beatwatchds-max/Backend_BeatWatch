@@ -28,6 +28,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("registrar")]
+    [EnableRateLimiting("login")]
     public async Task<ActionResult> Registrar([FromBody] RegistroRequest request)
     {
         try

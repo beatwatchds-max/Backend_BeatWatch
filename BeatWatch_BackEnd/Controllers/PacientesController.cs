@@ -1,4 +1,4 @@
-﻿using BeatWatch_BackEnd.Dtos;
+using BeatWatch_BackEnd.Dtos;
 using BeatWatch_BackEnd.Dtos.pacientesDtos;
 using BeatWatch_BackEnd.infrescture;
 using BeatWatch_BackEnd.Services;
@@ -119,9 +119,9 @@ namespace BeatWatch_BackEnd.Controllers
             {
                 return BadRequest(new { mensaje = ex.Message });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500, new { mensaje = "Error al obtener el perfil del paciente.", detalle = ex.Message });
+                return StatusCode(500, new { mensaje = "Error al obtener el perfil del paciente." });
             }
         }
 
@@ -223,9 +223,9 @@ namespace BeatWatch_BackEnd.Controllers
             {
                 return BadRequest(new { success = false, mensaje = ex.Message });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500, new { success = false, mensaje = "Error al obtener el historial de mediciones.", detalle = ex.Message });
+                return StatusCode(500, new { success = false, mensaje = "Error al obtener el historial de mediciones." });
             }
         }
     }

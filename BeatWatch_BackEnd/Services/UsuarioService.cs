@@ -191,13 +191,13 @@ public class UsuarioService : IUsuarioService
         // 2. Búsqueda opcional por nombre
         if (!string.IsNullOrWhiteSpace(searchName))
         {
-            filtro &= builder.Regex(u => u.Nombre, new BsonRegularExpression(searchName, "i"));
+            filtro &= builder.Regex(u => u.Nombre, new BsonRegularExpression(System.Text.RegularExpressions.Regex.Escape(searchName), "i"));
         }
 
         // 3. Búsqueda opcional por correo
         if (!string.IsNullOrWhiteSpace(searchEmail))
         {
-            filtro &= builder.Regex(u => u.Correo, new BsonRegularExpression(searchEmail, "i"));
+            filtro &= builder.Regex(u => u.Correo, new BsonRegularExpression(System.Text.RegularExpressions.Regex.Escape(searchEmail), "i"));
         }
 
         // 4. Paginación y ejecución

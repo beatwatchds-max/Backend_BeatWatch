@@ -1,4 +1,4 @@
-﻿using System.IdentityModel.Tokens.Jwt;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.IdentityModel.Tokens;
@@ -7,17 +7,20 @@ using BeatWatch_BackEnd.Models;
 using BeatWatch_BackEnd.Data;
 using BeatWatch_BackEnd.Dtos.Login;
 
+using Microsoft.Extensions.Options;
+using BeatWatch_BackEnd.Configuration;
+
 namespace BeatWatch_BackEnd.Services
 {
     public class AutenticacionService
     {
         private readonly MongoDbContext _context;
-        private readonly IConfiguration _config;
+        private readonly JwtSettings _settings;
 
-        public AutenticacionService(MongoDbContext context, IConfiguration config)
+        public AutenticacionService(MongoDbContext context, IOptions<JwtSettings> settings)
         {
             _context = context;
-            _config = config;
+            _settings = settings.Value;
         }
 
       
@@ -110,8 +113,7 @@ namespace BeatWatch_BackEnd.Services
             }
 
             // Generación del Token JWT
-            var jwtKey = _config["JwtSettings:SigningKey"];
-            var keyBytes = Encoding.UTF8.GetBytes(jwtKey!);
+            var keyBytes = Encoding.UTF8.GetBytes(_settings.SigningKey);
             var creds = new SigningCredentials(new SymmetricSecurityKey(keyBytes), SecurityAlgorithms.HmacSha256);
 
             var claims = new[]
@@ -119,15 +121,14 @@ namespace BeatWatch_BackEnd.Services
                 new Claim(ClaimTypes.NameIdentifier, usuarioId),
                 new Claim(ClaimTypes.Name, usuario.Nombre),
                 new Claim(ClaimTypes.Role, usuario.Rol),
-                new Claim("TokenMovil", usuario.TokenMovil!),
                 new Claim("idLicencia", idLicenciaEncontrada)
             };
 
             var tokenObject = new JwtSecurityToken(
-                issuer: _config["JwtSettings:Issuer"],
-                audience: _config["JwtSettings:Audience"],
+                issuer: _settings.Issuer,
+                audience: _settings.Audience,
                 claims: claims,
-                expires: DateTime.UtcNow.AddDays(30),
+                expires: DateTime.UtcNow.AddMinutes(_settings.ExpirationMinutes),
                 signingCredentials: creds
             );
 

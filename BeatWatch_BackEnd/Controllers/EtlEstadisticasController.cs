@@ -1,4 +1,4 @@
-﻿using BeatWatch_BackEnd.infrescture;
+using BeatWatch_BackEnd.infrescture;
 using BeatWatch_BackEnd.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -25,7 +25,13 @@ namespace BeatWatch_BackEnd.Controllers
         {
             try
             {
-                var resultado = await _estadisticaService.ObtenerPacientesUnicosConUltimoRegistroAsync();
+                var idLicenciaClaim = User.FindFirst("idLicencia")?.Value ?? User.FindFirst("LicenciaId")?.Value;
+                if (string.IsNullOrEmpty(idLicenciaClaim))
+                {
+                    return BadRequest(new { mensaje = "No se encontró el identificador de licencia en el token de autenticación." });
+                }
+
+                var resultado = await _estadisticaService.ObtenerPacientesUnicosConUltimoRegistroAsync(idLicenciaClaim);
                 return Ok(resultado);
             }
             catch (Exception)
