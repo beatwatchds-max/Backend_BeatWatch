@@ -1,3 +1,4 @@
+using BeatWatch_BackEnd.Dtos;
 using BeatWatch_BackEnd.Dtos.dispositivos;
 using BeatWatch_BackEnd.Dtos.pacientesDtos;
 using BeatWatch_BackEnd.infrescture;
@@ -15,12 +16,14 @@ namespace BeatWatch_BackEnd.Controllers
         private readonly IDispositivoService _dispositivoService;
         private readonly IPacienteAccessService _pacienteAccessService;
         private readonly IMedicionService _medicionService;
+        private readonly IAlertaService _alertaService;
 
-        public DispositivosController(IDispositivoService dispositivoService, IPacienteAccessService pacienteAccessService, IMedicionService medicionService)
+        public DispositivosController(IDispositivoService dispositivoService, IPacienteAccessService pacienteAccessService, IMedicionService medicionService, IAlertaService alertaService)
         {
             _dispositivoService = dispositivoService;
             _pacienteAccessService = pacienteAccessService;
             _medicionService = medicionService;
+            _alertaService = alertaService;
         }
 
         // 🟢 1. Endpoint llamado por el Reloj para iniciar la sesión QR
@@ -204,7 +207,30 @@ namespace BeatWatch_BackEnd.Controllers
                 return StatusCode(500, new { success = false, mensaje = "Error al registrar la medición.", detalle = ex.Message });
             }
         }
+        // POST /api/Dispositivos/{idDispositivo}/alertas
+        [Authorize]
+        [HttpPost("{idDispositivo}/alertas")]
+        public async Task<IActionResult> RegistrarAlerta(string idDispositivo, [FromBody] CrearAlertaDto dto)
+        {
+            try
+            {
+                var respuesta = await _alertaService.RegistrarAlertaAsync(idDispositivo, dto);
 
+                return StatusCode(201, respuesta);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { mensaje = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { mensaje = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { mensaje = "Error al registrar la alerta del dispositivo.", detalle = ex.Message });
+            }
+        }
 
     }
 }

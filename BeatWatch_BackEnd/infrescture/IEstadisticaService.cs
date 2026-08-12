@@ -8,7 +8,7 @@ namespace BeatWatch_BackEnd.infrescture
     {
         Task<List<PacienteEstadisticaResumenDto>> ObtenerPacientesUnicosConUltimoRegistroAsync(string idLicencia);
         // 🟢 Devuelve una lista si hay filtro de fechas, o un elemento si no hay fechas
-        Task<List<EstadisticaDiaria>> ObtenerEstadisticasPorPacienteAsync(
+        Task<List<EstadisticasDiarias>> ObtenerEstadisticasPorPacienteAsync(
             string idPaciente,
             DateTime? fechaInicio = null,
             DateTime? fechaFin = null);

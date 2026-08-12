@@ -3,7 +3,6 @@ using BeatWatch_BackEnd.Dtos.graficas;
 using BeatWatch_BackEnd.Dtos.pacientesDtos;
 using BeatWatch_BackEnd.infrescture;
 using BeatWatch_BackEnd.Models;
-using MongoDB.Bson;
 using MongoDB.Driver;
 
 namespace BeatWatch_BackEnd.Services
@@ -16,8 +15,8 @@ namespace BeatWatch_BackEnd.Services
         {
             _context = context;
         }
-        #region Métodos de consulta pasiente y estadísticas
 
+        #region Métodos de consulta paciente y estadísticas
 
         public async Task<List<PacienteEstadisticaResumenDto>> ObtenerPacientesUnicosConUltimoRegistroAsync(string idLicencia)
         {
@@ -32,46 +31,45 @@ namespace BeatWatch_BackEnd.Services
             }
 
             var pipeline = _context.EstadisticasDiarias.Aggregate()
-                .Match(e => pacientesLicenciaIds.Contains(e.IdPaciente))
-                .SortByDescending(e => e.Fecha)
-                .Group(e => e.IdPaciente, g => new
-                {
-                    IdPaciente = g.Key,
-                    UltimoRegistro = g.First().Fecha
-                })
-                .Project(g => new PacienteEstadisticaResumenDto
-                {
-                    IdPaciente = g.IdPaciente,
-                    UltimoRegistro = g.UltimoRegistro
-                });
+      .Match(e => pacientesLicenciaIds.Contains(e.IdPaciente))
+      .SortByDescending(e => e.Fecha)
+      .Group(e => e.IdPaciente, g => new
+      {
+          IdPaciente = g.Key,
+          UltimoRegistroStr = g.First().Fecha // Obtenemos el string primero
+      });
 
-            return await pipeline.ToListAsync();
+            var resultadosDb = await pipeline.ToListAsync();
+
+            // Lo convertimos al DTO mapeando el string a DateTime en memoria
+            return resultadosDb.Select(g => new PacienteEstadisticaResumenDto
+            {
+                IdPaciente = g.IdPaciente,
+                UltimoRegistro = DateTime.Parse(g.UltimoRegistroStr) // Transformación manual
+            }).ToList();
         }
 
-        public async Task<List<EstadisticaDiaria>> ObtenerEstadisticasPorPacienteAsync(string idPaciente,DateTime? fechaInicio = null, DateTime? fechaFin = null)
+        public async Task<List<EstadisticasDiarias>> ObtenerEstadisticasPorPacienteAsync(string idPaciente, DateTime? fechaInicio = null, DateTime? fechaFin = null)
         {
             if (string.IsNullOrWhiteSpace(idPaciente))
             {
                 throw new ArgumentException("El ID del paciente es obligatorio.");
             }
 
-            var builder = Builders<EstadisticaDiaria>.Filter;
+            var builder = Builders<EstadisticasDiarias>.Filter;
             var filtro = builder.Eq(e => e.IdPaciente, idPaciente);
 
-            // 🟢 Si se envían fechas, aplicamos el rango
+            // 🟢 Filtramos comparando strings en formato "yyyy-MM-dd"
             if (fechaInicio.HasValue)
             {
-                filtro &= builder.Gte(e => e.Fecha, DateTime.SpecifyKind(fechaInicio.Value.Date, DateTimeKind.Utc));
+                filtro &= builder.Gte(e => e.Fecha, fechaInicio.Value.ToString("yyyy-MM-dd"));
             }
 
             if (fechaFin.HasValue)
             {
-                // Se ajusta a las 23:59:59 para incluir todo el día final
-                var fechaFinAjustada = fechaFin.Value.Date.AddDays(1).AddTicks(-1);
-                filtro &= builder.Lte(e => e.Fecha, DateTime.SpecifyKind(fechaFinAjustada, DateTimeKind.Utc));
+                filtro &= builder.Lte(e => e.Fecha, fechaFin.Value.ToString("yyyy-MM-dd"));
             }
 
-            // Si se especificó rango de fechas, ordenamos de forma ascendente (cronológico)
             if (fechaInicio.HasValue || fechaFin.HasValue)
             {
                 return await _context.EstadisticasDiarias
@@ -80,43 +78,39 @@ namespace BeatWatch_BackEnd.Services
                     .ToListAsync();
             }
 
-            // Si NO se enviaron fechas, tomamos únicamente el registro más reciente
             var ultimaEstadistica = await _context.EstadisticasDiarias
                 .Find(filtro)
                 .SortByDescending(e => e.Fecha)
                 .FirstOrDefaultAsync();
 
-            return ultimaEstadistica != null ? new List<EstadisticaDiaria> { ultimaEstadistica } : new List<EstadisticaDiaria>();
+            return ultimaEstadistica != null ? new List<EstadisticasDiarias> { ultimaEstadistica } : new List<EstadisticasDiarias>();
         }
         #endregion
 
         #region Métodos de consulta para gráficas y series de datos
-        public async Task<GraficaBpmResponseDto> ObtenerGraficaBpmAsync(string idPaciente,DateTime? fechaInicio = null, DateTime? fechaFin = null,int dias = 7)
+
+        public async Task<GraficaBpmResponseDto> ObtenerGraficaBpmAsync(string idPaciente, DateTime? fechaInicio = null, DateTime? fechaFin = null, int dias = 7)
         {
             if (string.IsNullOrWhiteSpace(idPaciente))
             {
                 throw new ArgumentException("El ID del paciente es obligatorio.");
             }
 
-            var builder = Builders<EstadisticaDiaria>.Filter;
+            var builder = Builders<EstadisticasDiarias>.Filter;
             var filtro = builder.Eq(e => e.IdPaciente, idPaciente);
 
-            // Definir el rango de fechas
             if (fechaInicio.HasValue && fechaFin.HasValue)
             {
-                var inicioUtc = DateTime.SpecifyKind(fechaInicio.Value.Date, DateTimeKind.Utc);
-                var finUtc = DateTime.SpecifyKind(fechaFin.Value.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc);
-
-                filtro &= builder.Gte(e => e.Fecha, inicioUtc) & builder.Lte(e => e.Fecha, finUtc);
+                var inicioStr = fechaInicio.Value.ToString("yyyy-MM-dd");
+                var finStr = fechaFin.Value.ToString("yyyy-MM-dd");
+                filtro &= builder.Gte(e => e.Fecha, inicioStr) & builder.Lte(e => e.Fecha, finStr);
             }
             else
             {
-                // Por defecto, consulta los últimos N días transcurridos
-                var fechaLimite = DateTime.UtcNow.Date.AddDays(-dias);
-                filtro &= builder.Gte(e => e.Fecha, fechaLimite);
+                var fechaLimiteStr = DateTime.UtcNow.AddDays(-dias).ToString("yyyy-MM-dd");
+                filtro &= builder.Gte(e => e.Fecha, fechaLimiteStr);
             }
 
-            // Consulta en MongoDB proyectando los puntos de BPM
             var registros = await _context.EstadisticasDiarias
                 .Find(filtro)
                 .SortBy(e => e.Fecha)
@@ -124,10 +118,10 @@ namespace BeatWatch_BackEnd.Services
 
             var puntos = registros.Select(e => new PuntoBpmDto
             {
-                Fecha = e.Fecha.ToString("yyyy-MM-dd"),
-                Promedio = e.FrecuenciaCardiaca.Promedio,
-                Minimo = e.FrecuenciaCardiaca.Minimo,
-                Maximo = e.FrecuenciaCardiaca.Maximo
+                Fecha = e.Fecha,
+                Promedio = e.FrecuenciaPromedio ?? 0,
+                Minimo = (int)(e.FrecuenciaMinima ?? 0), // 🟢 Cast a int
+                Maximo = (int)(e.FrecuenciaMaxima ?? 0)  // 🟢 Cast a int
             }).ToList();
 
             return new GraficaBpmResponseDto
@@ -136,33 +130,29 @@ namespace BeatWatch_BackEnd.Services
                 Puntos = puntos
             };
         }
-        ///
-        public async Task<GraficaEpisodiosResponseDto> ObtenerGraficaEpisodiosAsync(string idPaciente,DateTime? fechaInicio = null,DateTime? fechaFin = null, int dias = 7)
+
+        public async Task<GraficaEpisodiosResponseDto> ObtenerGraficaEpisodiosAsync(string idPaciente, DateTime? fechaInicio = null, DateTime? fechaFin = null, int dias = 7)
         {
             if (string.IsNullOrWhiteSpace(idPaciente))
             {
                 throw new ArgumentException("El ID del paciente es obligatorio.");
             }
 
-            var builder = Builders<EstadisticaDiaria>.Filter;
+            var builder = Builders<EstadisticasDiarias>.Filter;
             var filtro = builder.Eq(e => e.IdPaciente, idPaciente);
 
-            // Definición de rango de fechas
             if (fechaInicio.HasValue && fechaFin.HasValue)
             {
-                var inicioUtc = DateTime.SpecifyKind(fechaInicio.Value.Date, DateTimeKind.Utc);
-                var finUtc = DateTime.SpecifyKind(fechaFin.Value.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc);
-
-                filtro &= builder.Gte(e => e.Fecha, inicioUtc) & builder.Lte(e => e.Fecha, finUtc);
+                var inicioStr = fechaInicio.Value.ToString("yyyy-MM-dd");
+                var finStr = fechaFin.Value.ToString("yyyy-MM-dd");
+                filtro &= builder.Gte(e => e.Fecha, inicioStr) & builder.Lte(e => e.Fecha, finStr);
             }
             else
             {
-                // Por defecto, consulta los últimos N días
-                var fechaLimite = DateTime.UtcNow.Date.AddDays(-dias);
-                filtro &= builder.Gte(e => e.Fecha, fechaLimite);
+                var fechaLimiteStr = DateTime.UtcNow.AddDays(-dias).ToString("yyyy-MM-dd");
+                filtro &= builder.Gte(e => e.Fecha, fechaLimiteStr);
             }
 
-            // Consulta en MongoDB proyectando los episodios diarios
             var registros = await _context.EstadisticasDiarias
                 .Find(filtro)
                 .SortBy(e => e.Fecha)
@@ -170,10 +160,10 @@ namespace BeatWatch_BackEnd.Services
 
             var episodios = registros.Select(e => new EpisodioGraficaDto
             {
-                Fecha = e.Fecha.ToString("yyyy-MM-dd"),
-                TotalArritmias = e.Arritmias.Total,
-                Criticas = e.Arritmias.Criticas,
-                DuracionTotalSegundos = e.Arritmias.DuracionTotalSeconds
+                Fecha = e.Fecha,
+                TotalArritmias = e.TotalArritmias,
+                Criticas = e.AlertasCriticas,
+                DuracionTotalSegundos = e.DuracionTotalEpisodios
             }).ToList();
 
             return new GraficaEpisodiosResponseDto
@@ -182,28 +172,27 @@ namespace BeatWatch_BackEnd.Services
                 Episodios = episodios
             };
         }
-        ///
-        public async Task<GraficaSeriesResponseDto> ObtenerGraficaSeriesAsync(string idPaciente,DateTime? fechaInicio = null,DateTime? fechaFin = null, string? metricas = null)
+
+        public async Task<GraficaSeriesResponseDto> ObtenerGraficaSeriesAsync(string idPaciente, DateTime? fechaInicio = null, DateTime? fechaFin = null, string? metricas = null)
         {
             if (string.IsNullOrWhiteSpace(idPaciente))
             {
                 throw new ArgumentException("El ID del paciente es obligatorio.");
             }
 
-            var builder = Builders<EstadisticaDiaria>.Filter;
+            var builder = Builders<EstadisticasDiarias>.Filter;
             var filtro = builder.Eq(e => e.IdPaciente, idPaciente);
 
-            // Si no se especifican fechas, toma por defecto el último mes (30 días)
             if (fechaInicio.HasValue && fechaFin.HasValue)
             {
-                var inicioUtc = DateTime.SpecifyKind(fechaInicio.Value.Date, DateTimeKind.Utc);
-                var finUtc = DateTime.SpecifyKind(fechaFin.Value.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc);
-                filtro &= builder.Gte(e => e.Fecha, inicioUtc) & builder.Lte(e => e.Fecha, finUtc);
+                var inicioStr = fechaInicio.Value.ToString("yyyy-MM-dd");
+                var finStr = fechaFin.Value.ToString("yyyy-MM-dd");
+                filtro &= builder.Gte(e => e.Fecha, inicioStr) & builder.Lte(e => e.Fecha, finStr);
             }
             else
             {
-                var fechaLimiteMes = DateTime.UtcNow.Date.AddDays(-30);
-                filtro &= builder.Gte(e => e.Fecha, fechaLimiteMes);
+                var fechaLimiteStr = DateTime.UtcNow.AddDays(-30).ToString("yyyy-MM-dd");
+                filtro &= builder.Gte(e => e.Fecha, fechaLimiteStr);
             }
 
             var registros = await _context.EstadisticasDiarias
@@ -211,9 +200,8 @@ namespace BeatWatch_BackEnd.Services
                 .SortBy(e => e.Fecha)
                 .ToListAsync();
 
-            // Procesar lista de métricas solicitadas
             var listaMetricas = string.IsNullOrWhiteSpace(metricas)
-                ? new List<string> { "BPMPromedio", "Pasos" } // Métricas por defecto
+                ? new List<string> { "BPMPromedio", "Pasos" }
                 : metricas.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
 
             var listaMetricasUpper = listaMetricas.Select(m => m.ToUpperInvariant()).ToList();
@@ -228,14 +216,14 @@ namespace BeatWatch_BackEnd.Services
 
             var series = registros.Select(e => new PuntoSerieDto
             {
-                Fecha = e.Fecha.ToString("yyyy-MM-dd"),
-                BpmPromedio = incluirBpmPromedio ? e.FrecuenciaCardiaca.Promedio : null,
-                BpmMinimo = incluirBpmMinimo ? e.FrecuenciaCardiaca.Minimo : null,
-                BpmMaximo = incluirBpmMaximo ? e.FrecuenciaCardiaca.Maximo : null,
-                Pasos = incluirPasos ? e.Actividad.Pasos : null,
-                Calorias = incluirCalorias ? e.Actividad.Calorias : null,
-                DistanciaKm = incluirDistancia ? e.Actividad.DistanciaKm : null,
-                HorasSueno = incluirSueno ? e.Actividad.HorasSueno : null
+                Fecha = e.Fecha,
+                BpmPromedio = incluirBpmPromedio ? e.FrecuenciaPromedio : null,
+                BpmMinimo = incluirBpmMinimo ? (int?)e.FrecuenciaMinima : null, // 🟢 Cast a int?
+                BpmMaximo = incluirBpmMaximo ? (int?)e.FrecuenciaMaxima : null, // 🟢 Cast a int?
+                Pasos = incluirPasos ? e.TotalPasos : null,
+                Calorias = incluirCalorias ? e.TotalCalorias : null,
+                DistanciaKm = incluirDistancia ? e.DistanciaTotalKm : null,
+                HorasSueno = incluirSueno ? e.HorasSueno : null
             }).ToList();
 
             return new GraficaSeriesResponseDto
@@ -246,27 +234,26 @@ namespace BeatWatch_BackEnd.Services
             };
         }
 
-        public async Task<GraficaSeriesColumnarResponseDto> ObtenerGraficaSeriesColumnarAsync(string idPaciente,DateTime? fechaInicio = null,DateTime? fechaFin = null, string? metricas = null)
+        public async Task<GraficaSeriesColumnarResponseDto> ObtenerGraficaSeriesColumnarAsync(string idPaciente, DateTime? fechaInicio = null, DateTime? fechaFin = null, string? metricas = null)
         {
             if (string.IsNullOrWhiteSpace(idPaciente))
             {
                 throw new ArgumentException("El ID del paciente es obligatorio.");
             }
 
-            var builder = Builders<EstadisticaDiaria>.Filter;
+            var builder = Builders<EstadisticasDiarias>.Filter;
             var filtro = builder.Eq(e => e.IdPaciente, idPaciente);
 
-            // Rango de fechas (últimos 30 días por defecto)
             if (fechaInicio.HasValue && fechaFin.HasValue)
             {
-                var inicioUtc = DateTime.SpecifyKind(fechaInicio.Value.Date, DateTimeKind.Utc);
-                var finUtc = DateTime.SpecifyKind(fechaFin.Value.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc);
-                filtro &= builder.Gte(e => e.Fecha, inicioUtc) & builder.Lte(e => e.Fecha, finUtc);
+                var inicioStr = fechaInicio.Value.ToString("yyyy-MM-dd");
+                var finStr = fechaFin.Value.ToString("yyyy-MM-dd");
+                filtro &= builder.Gte(e => e.Fecha, inicioStr) & builder.Lte(e => e.Fecha, finStr);
             }
             else
             {
-                var fechaLimiteMes = DateTime.UtcNow.Date.AddDays(-30);
-                filtro &= builder.Gte(e => e.Fecha, fechaLimiteMes);
+                var fechaLimiteStr = DateTime.UtcNow.AddDays(-30).ToString("yyyy-MM-dd");
+                filtro &= builder.Gte(e => e.Fecha, fechaLimiteStr);
             }
 
             var registros = await _context.EstadisticasDiarias
@@ -274,17 +261,13 @@ namespace BeatWatch_BackEnd.Services
                 .SortBy(e => e.Fecha)
                 .ToListAsync();
 
-            // Procesar lista de métricas solicitadas desde el Query String
             var listaMetricas = string.IsNullOrWhiteSpace(metricas)
                 ? new List<string> { "BPMPromedio", "BPMMinimo", "BPMMaximo" }
                 : metricas.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
 
             var dictSeries = new Dictionary<string, object>();
+            dictSeries["fechas"] = registros.Select(e => e.Fecha).ToList();
 
-            // Arreglo de fechas obligatorio
-            dictSeries["fechas"] = registros.Select(e => e.Fecha.ToString("yyyy-MM-dd")).ToList();
-
-            // Llenar dinámicamente los arreglos de las métricas solicitadas
             foreach (var metrica in listaMetricas)
             {
                 var keyUpper = metrica.ToUpperInvariant();
@@ -293,40 +276,33 @@ namespace BeatWatch_BackEnd.Services
                 {
                     case "BPMPROMEDIO":
                     case "PROMEDIO":
-                        dictSeries["BPMPromedio"] = registros.Select(e => e.FrecuenciaCardiaca.Promedio).ToList();
+                        dictSeries["BPMPromedio"] = registros.Select(e => e.FrecuenciaPromedio).ToList();
                         break;
-
                     case "BPMMINIMO":
                     case "MINIMO":
-                        dictSeries["BPMMinimo"] = registros.Select(e => e.FrecuenciaCardiaca.Minimo).ToList();
+                        dictSeries["BPMMinimo"] = registros.Select(e => e.FrecuenciaMinima).ToList();
                         break;
-
                     case "BPMMAXIMO":
                     case "MAXIMO":
-                        dictSeries["BPMMAXIMO"] = registros.Select(e => e.FrecuenciaCardiaca.Maximo).ToList();
+                        dictSeries["BPMMAXIMO"] = registros.Select(e => e.FrecuenciaMaxima).ToList();
                         break;
-
                     case "PASOS":
-                        dictSeries["Pasos"] = registros.Select(e => e.Actividad.Pasos).ToList();
+                        dictSeries["Pasos"] = registros.Select(e => e.TotalPasos).ToList();
                         break;
-
                     case "CALORIAS":
-                        dictSeries["Calorias"] = registros.Select(e => e.Actividad.Calorias).ToList();
+                        dictSeries["Calorias"] = registros.Select(e => e.TotalCalorias).ToList();
                         break;
-
                     case "DISTANCIAKM":
                     case "DISTANCIA":
-                        dictSeries["DistanciaKm"] = registros.Select(e => e.Actividad.DistanciaKm).ToList();
+                        dictSeries["DistanciaKm"] = registros.Select(e => e.DistanciaTotalKm).ToList();
                         break;
-
                     case "HORASSUENO":
                     case "SUENO":
-                        dictSeries["HorasSueno"] = registros.Select(e => e.Actividad.HorasSueno).ToList();
+                        dictSeries["HorasSueno"] = registros.Select(e => e.HorasSueno).ToList();
                         break;
-
                     case "TOTALARRITMIAS":
                     case "ARRITMIAS":
-                        dictSeries["TotalArritmias"] = registros.Select(e => e.Arritmias.Total).ToList();
+                        dictSeries["TotalArritmias"] = registros.Select(e => e.TotalArritmias).ToList();
                         break;
                 }
             }
@@ -338,30 +314,29 @@ namespace BeatWatch_BackEnd.Services
             };
         }
 
-        public async Task<GraficaResumenResponseDto> ObtenerResumenKpiAsync(string idPaciente,DateTime? fechaInicio = null,DateTime? fechaFin = null, int dias = 30)
+        public async Task<GraficaResumenResponseDto> ObtenerResumenKpiAsync(string idPaciente, DateTime? fechaInicio = null, DateTime? fechaFin = null, int dias = 30)
         {
             if (string.IsNullOrWhiteSpace(idPaciente))
             {
                 throw new ArgumentException("El ID del paciente es obligatorio.");
             }
 
-            var builder = Builders<EstadisticaDiaria>.Filter;
+            var builder = Builders<EstadisticasDiarias>.Filter;
             var filtro = builder.Eq(e => e.IdPaciente, idPaciente);
 
             string etiquetaPeriodo;
 
             if (fechaInicio.HasValue && fechaFin.HasValue)
             {
-                var inicioUtc = DateTime.SpecifyKind(fechaInicio.Value.Date, DateTimeKind.Utc);
-                var finUtc = DateTime.SpecifyKind(fechaFin.Value.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc);
-
-                filtro &= builder.Gte(e => e.Fecha, inicioUtc) & builder.Lte(e => e.Fecha, finUtc);
+                var inicioStr = fechaInicio.Value.ToString("yyyy-MM-dd");
+                var finStr = fechaFin.Value.ToString("yyyy-MM-dd");
+                filtro &= builder.Gte(e => e.Fecha, inicioStr) & builder.Lte(e => e.Fecha, finStr);
                 etiquetaPeriodo = $"{fechaInicio.Value:yyyy-MM-dd} a {fechaFin.Value:yyyy-MM-dd}";
             }
             else
             {
-                var fechaLimite = DateTime.UtcNow.Date.AddDays(-dias);
-                filtro &= builder.Gte(e => e.Fecha, fechaLimite);
+                var fechaLimiteStr = DateTime.UtcNow.AddDays(-dias).ToString("yyyy-MM-dd");
+                filtro &= builder.Gte(e => e.Fecha, fechaLimiteStr);
                 etiquetaPeriodo = $"Ultimos {dias} dias";
             }
 
@@ -382,11 +357,17 @@ namespace BeatWatch_BackEnd.Services
                 };
             }
 
-            // Cálculos de agregados / KPI
-            double promedioBpm = Math.Round(registros.Average(e => e.FrecuenciaCardiaca.Promedio), 1);
-            int totalPasos = registros.Sum(e => e.Actividad.Pasos);
-            int totalArritmias = registros.Sum(e => e.Arritmias.Total);
-            double promedioSueno = Math.Round(registros.Average(e => e.Actividad.HorasSueno), 1);
+            // Validamos HasValue para no romper el Average() si algún día llega nulo por el ETL
+            double promedioBpm = registros.Any(e => e.FrecuenciaPromedio.HasValue)
+                ? Math.Round(registros.Where(e => e.FrecuenciaPromedio.HasValue).Average(e => e.FrecuenciaPromedio!.Value), 1)
+                : 0;
+
+            int totalPasos = registros.Sum(e => e.TotalPasos);
+            int totalArritmias = registros.Sum(e => e.TotalArritmias);
+
+            double promedioSueno = registros.Any(e => e.HorasSueno.HasValue)
+                ? Math.Round(registros.Where(e => e.HorasSueno.HasValue).Average(e => e.HorasSueno!.Value), 1)
+                : 0;
 
             return new GraficaResumenResponseDto
             {

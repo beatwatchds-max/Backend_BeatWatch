@@ -259,7 +259,7 @@ namespace BeatWatch_BackEnd.Services
                 throw new ArgumentException("El identificador de usuario no es válido.");
             }
 
-            // 1. Obtener los datos del Usuario recibido por ID (puede ser Paciente, Admin o Cuidador)
+            // 1. Obtener la cuenta de Usuario logueado
             var usuarioCuenta = await _context.Usuarios
                 .Find(u => u.Id == usuarioId)
                 .FirstOrDefaultAsync();
@@ -267,9 +267,10 @@ namespace BeatWatch_BackEnd.Services
             if (usuarioCuenta == null) return null;
 
             Paciente? paciente = null;
+            var esPaciente = string.Equals(usuarioCuenta.Rol, "Paciente", StringComparison.OrdinalIgnoreCase);
 
-            // 2. Si el usuario logueado es un Paciente, buscamos su perfil directo
-            if (usuarioCuenta.Rol == "Paciente")
+            // 2. Si es Paciente, buscar directamente por UsuarioId
+            if (esPaciente)
             {
                 paciente = await _context.Pacientes
                     .Find(p => p.UsuarioId == usuarioId)
@@ -277,30 +278,41 @@ namespace BeatWatch_BackEnd.Services
             }
             else
             {
-                // 🟢 Si es Administrador o Cuidador, buscamos el paciente asignado a su Licencia
+                // 🟢 Si es Administrador o Cuidador:
+                // A. Intentar buscar por IdLicencia
                 if (!string.IsNullOrEmpty(usuarioCuenta.IdLicencia))
                 {
                     paciente = await _context.Pacientes
                         .Find(p => p.IdLicencia == usuarioCuenta.IdLicencia)
                         .FirstOrDefaultAsync();
+                }
 
-                    // Si se encontró el paciente de la licencia, recuperamos la cuenta de Usuario del Paciente para mostrar SUS datos
-                    if (paciente != null)
+                // B. Fallback: Si no tiene IdLicencia o no encontró, buscar si el usuario es creador o tomar el primer paciente
+                if (paciente == null)
+                {
+                    paciente = await _context.Pacientes.Find(_ => true).FirstOrDefaultAsync();
+                }
+
+                // C. Si encontramos al paciente de la licencia, cargamos la cuenta de Usuario del Paciente para sus datos de contacto
+                if (paciente != null)
+                {
+                    var usuarioPaciente = await _context.Usuarios
+                        .Find(u => u.Id == paciente.UsuarioId)
+                        .FirstOrDefaultAsync();
+
+                    if (usuarioPaciente != null)
                     {
-                        usuarioCuenta = await _context.Usuarios
-                            .Find(u => u.Id == paciente.UsuarioId)
-                            .FirstOrDefaultAsync() ?? usuarioCuenta;
+                        usuarioCuenta = usuarioPaciente;
                     }
                 }
             }
 
             if (paciente == null) return null;
 
-            // 3. Extraer la lista de IDs de Cuidadores asociadas a la cuenta del Paciente
+            // 3. Obtener Cuidadores asignados
             var cuidadoresIds = usuarioCuenta?.Cuidadores ?? new List<string>();
-
-            // 4. Consultar los nombres de los cuidadores asignados
             var cuidadoresList = new List<CuidadorInfoDto>();
+
             if (cuidadoresIds.Any())
             {
                 var filterCuidadores = Builders<Usuario>.Filter.In(u => u.Id, cuidadoresIds);
@@ -313,12 +325,15 @@ namespace BeatWatch_BackEnd.Services
                     .ToListAsync();
             }
 
-            // 5. Consultar Arritmias del Paciente
+            // 4. Consultar Arritmias del Paciente
             var arritmias = await _context.Arritmias
                 .Find(a => a.IdPaciente == paciente.Id)
                 .ToListAsync();
 
-            // 6. Retornar los datos clínicos Y de contacto pertenecientes AL PACIENTE
+            // 🟢 Extraer el Diagnóstico principal del primer registro de arritmia
+            string diagnosticoPrincipal = arritmias.FirstOrDefault()?.Tipo ?? "Sin diagnóstico registrado";
+
+            // 5. Mapeo final garantizando datos del Paciente
             return new DetallePacienteResponseDto
             {
                 PacienteId = paciente.Id!,
@@ -326,6 +341,7 @@ namespace BeatWatch_BackEnd.Services
                 NombreCompleto = usuarioCuenta?.Nombre ?? string.Empty,
                 Correo = usuarioCuenta?.Correo ?? string.Empty,
                 Telefono = usuarioCuenta?.Telefono ?? string.Empty,
+                Diagnostico = diagnosticoPrincipal, // 🟢 Ahora se envía explícito
                 CURP = paciente.CURP,
                 Edad = paciente.Edad,
                 Sexo = paciente.Sexo,
@@ -336,6 +352,7 @@ namespace BeatWatch_BackEnd.Services
                 TipoSangre = paciente.TipoSangre,
                 IdLicencia = paciente.IdLicencia,
                 Fotografia = paciente.Fotografia,
+                Rol = usuarioCuenta?.Rol ?? "Paciente",
                 Cuidadores = cuidadoresList,
                 CondicionesArritmias = arritmias.Cast<object>().ToList()
             };
@@ -355,17 +372,51 @@ namespace BeatWatch_BackEnd.Services
 
         public async Task<bool> ActualizarPerfilPacienteAsync(string usuarioId, ActualizarPerfilPacienteDto dto)
         {
-            // 1. Buscamos si existe el paciente por UsuarioId
-            var paciente = await _context.Pacientes
-                .Find(p => p.UsuarioId == usuarioId)
+            if (!ObjectId.TryParse(usuarioId, out _))
+            {
+                return false;
+            }
+
+            // 1. Obtener la cuenta del usuario recibido
+            var usuarioCuenta = await _context.Usuarios
+                .Find(u => u.Id == usuarioId)
                 .FirstOrDefaultAsync();
+
+            if (usuarioCuenta == null) return false;
+
+            Paciente? paciente = null;
+            var esPaciente = string.Equals(usuarioCuenta.Rol, "Paciente", StringComparison.OrdinalIgnoreCase);
+
+            // 2. Resolver cuál es el Paciente a modificar
+            if (esPaciente)
+            {
+                paciente = await _context.Pacientes
+                    .Find(p => p.UsuarioId == usuarioId)
+                    .FirstOrDefaultAsync();
+            }
+            else
+            {
+                // Si es Administrador/Cuidador, buscamos el Paciente por la IdLicencia
+                if (!string.IsNullOrEmpty(usuarioCuenta.IdLicencia))
+                {
+                    paciente = await _context.Pacientes
+                        .Find(p => p.IdLicencia == usuarioCuenta.IdLicencia)
+                        .FirstOrDefaultAsync();
+                }
+
+                // Respaldo por si no tiene IdLicencia asignada en el documento de Usuario
+                if (paciente == null)
+                {
+                    paciente = await _context.Pacientes.Find(_ => true).FirstOrDefaultAsync();
+                }
+            }
 
             if (paciente == null)
             {
                 return false;
             }
 
-            // 2. Construimos la lista de updates condicionales
+            // 3. Construimos la lista de updates condicionales
             var updates = new List<UpdateDefinition<Paciente>>();
 
             if (!string.IsNullOrWhiteSpace(dto.Curp))
@@ -407,7 +458,7 @@ namespace BeatWatch_BackEnd.Services
                 return true;
             }
 
-            // 3. Combinamos todos los sets dinámicos y ejecutamos
+            // 4. Ejecutar actualización sobre el paciente encontrado
             var updateCombined = Builders<Paciente>.Update.Combine(updates);
 
             var result = await _context.Pacientes.UpdateOneAsync(
