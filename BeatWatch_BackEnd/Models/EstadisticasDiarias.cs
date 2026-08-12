@@ -4,7 +4,7 @@ using MongoDB.Bson.Serialization.Attributes;
 namespace BeatWatch_BackEnd.Models
 {
     [BsonIgnoreExtraElements]
-    public class EstadisticaDiarias
+    public class EstadisticasDiarias
     {
         [BsonId]
         [BsonRepresentation(BsonType.ObjectId)]
