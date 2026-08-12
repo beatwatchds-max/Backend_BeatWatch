@@ -16,6 +16,7 @@
         public string NombreCompleto { get; set; } = null!;
         public string Correo { get; set; } = null!;
         public string Telefono { get; set; } = null!;
+        public string Diagnostico { get; set; } = "Sin diagnóstico registrado";
         public string CURP { get; set; } = null!;
         public int Edad { get; set; }
         public string Sexo { get; set; } = null!;
@@ -26,7 +27,7 @@
         public string TipoSangre { get; set; } = null!;
         public string? IdLicencia { get; set; }
         public byte[]? Fotografia { get; set; }
-
+        public string Rol { get; set; } = null!;
         // 🟢 Asegúrate de que esta propiedad NO esté comentada
         public List<CuidadorInfoDto> Cuidadores { get; set; } = new();
 
