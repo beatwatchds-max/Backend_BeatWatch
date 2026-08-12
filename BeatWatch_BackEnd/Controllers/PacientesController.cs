@@ -132,13 +132,17 @@ namespace BeatWatch_BackEnd.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
+            // Obtener el detalle del paciente para identificar el PacienteId real y validar permisos
             var detallePaciente = await _pacienteService.ObtenerDetallePorUsuarioIdAsync(usuarioId);
             if (detallePaciente is null)
             {
                 return NotFound(new { mensaje = "No se encontró el perfil del paciente para actualizar." });
             }
 
-            if (!await _pacienteAccessService.PuedeAccederAsync(User, detallePaciente.PacienteId)) return Forbid();
+            if (!await _pacienteAccessService.PuedeAccederAsync(User, detallePaciente.PacienteId))
+            {
+                return Forbid();
+            }
 
             var actualizado = await _pacienteService.ActualizarPerfilPacienteAsync(usuarioId, dto);
 
