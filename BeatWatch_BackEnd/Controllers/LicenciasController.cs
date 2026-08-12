@@ -1,5 +1,6 @@
-﻿using BeatWatch_BackEnd.Models;
+﻿using BeatWatch_BackEnd.Dtos.licencia;
 using BeatWatch_BackEnd.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BeatWatch_BackEnd.Controllers
@@ -16,20 +17,21 @@ namespace BeatWatch_BackEnd.Controllers
         }
 
         [HttpPost("procesar-pago")]
-        public async Task<IActionResult> ProcesarPagoSimulado([FromBody] PagoSimuladoDto pagoDto)
+        [AllowAnonymous] // 🟢 Omitir bloqueo 401 si se permite activar sin JWT
+        public async Task<IActionResult> ProcesarPagoSimulado([FromBody] ActivarLicenciaGratuitaDto dto)
         {
             try
             {
-                var resultado = await _licenciaService.ProcesarPagoYCrearLicenciaAsync(pagoDto);
+                var resultado = await _licenciaService.ProcesarPagoYCrearLicenciaAsync(dto);
 
                 if (resultado == null)
                 {
-                    return BadRequest(new { mensaje = "El pago simulado no pudo procesarse." });
+                    return BadRequest(new { mensaje = "No se pudo activar la licencia gratuita." });
                 }
 
                 return Ok(new
                 {
-                    mensaje = "Pago procesado con éxito y licencia activada.",
+                    mensaje = "Plan gratuito activado con éxito.",
                     licencia = resultado
                 });
             }
@@ -37,9 +39,9 @@ namespace BeatWatch_BackEnd.Controllers
             {
                 return BadRequest(new { mensaje = ex.Message });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                return StatusCode(500, new { mensaje = "Error interno del servidor." });
+                return StatusCode(500, new { mensaje = "Error interno al activar la licencia.", detalle = ex.Message });
             }
         }
     }

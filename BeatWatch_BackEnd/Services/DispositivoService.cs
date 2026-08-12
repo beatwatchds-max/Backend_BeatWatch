@@ -1,5 +1,5 @@
 ﻿using BeatWatch_BackEnd.Data;
-using BeatWatch_BackEnd.Dtos;
+using BeatWatch_BackEnd.Dtos.dispositivos;
 using BeatWatch_BackEnd.infrescture;
 using BeatWatch_BackEnd.Models;
 using MongoDB.Bson;
@@ -15,7 +15,7 @@ namespace BeatWatch_BackEnd.Services
         {
             _context = context;
         }
-
+        #region Emparejamiento y auxiliares 
         public async Task<SesionEmparejamientoResponseDto> CrearSesionEmparejamientoAsync(CrearSesionEmparejamientoDto dto)
         {
             var idSesion = Guid.NewGuid().ToString("D");
@@ -179,7 +179,9 @@ namespace BeatWatch_BackEnd.Services
                 }
             };
         }
+        #endregion
 
+        #region Consultas de dispositivos
         public async Task<List<Dispositivo>> ObtenerDispositivosPorPacienteAsync(string? idPaciente)
         {
             var filterBuilder = Builders<Dispositivo>.Filter;
@@ -198,6 +200,41 @@ namespace BeatWatch_BackEnd.Services
             return await _context.Dispositivos.Find(filter).ToListAsync();
         }
 
+        public async Task<List<Dispositivo>> ObtenerDispositivosPorLicenciaAsync(string idLicencia)
+        {
+            if (!ObjectId.TryParse(idLicencia, out _))
+            {
+                throw new ArgumentException("El identificador de la licencia no tiene un formato válido.");
+            }
+
+            // A. Obtener los IDs de los Pacientes registrados bajo esta Licencia
+            var pacienteIds = await _context.Pacientes
+                .Find(p => p.IdLicencia == idLicencia)
+                .Project(p => p.Id!)
+                .ToListAsync();
+
+            if (!pacienteIds.Any())
+            {
+                return new List<Dispositivo>();
+            }
+
+            // B. Consultar los dispositivos vinculados a esos IDs de paciente
+            var filter = Builders<Dispositivo>.Filter.In(d => d.IdPaciente, pacienteIds);
+            return await _context.Dispositivos.Find(filter).ToListAsync();
+        }
+
+        public async Task<Dispositivo?> ObtenerDispositivoAsync(string idDispositivo)
+        {
+            if (!ObjectId.TryParse(idDispositivo, out _))
+            {
+                throw new ArgumentException("El identificador del dispositivo no tiene un formato válido.");
+            }
+
+            return await _context.Dispositivos.Find(d => d.Id == idDispositivo && d.Activo).FirstOrDefaultAsync();
+        }
+        #endregion
+
+        #region actualizacion y eliminación de dispositivos
         public async Task<bool> ActualizarAliasAsync(string id, string nuevoAlias)
         {
             if (!ObjectId.TryParse(id, out _))
@@ -223,62 +260,9 @@ namespace BeatWatch_BackEnd.Services
             var result = await _context.Dispositivos.DeleteOneAsync(filter);
             return result.DeletedCount > 0;
         }
-        public async Task<bool> ActualizarMetricasAsync(string idDispositivo, ActualizarMetricasWearableDto dto)
-        {
-            if (!ObjectId.TryParse(idDispositivo, out _))
-            {
-                throw new ArgumentException("El identificador del dispositivo no tiene un formato válido.");
-            }
+       
+       
+        #endregion
 
-            var filter = Builders<Dispositivo>.Filter.Eq(d => d.Id, idDispositivo);
-
-            var update = Builders<Dispositivo>.Update
-                .Set("MetricasWearable.FrecuenciaCardiacaBpm", dto.FrecuenciaCardiacaBpm)
-                .Set("MetricasWearable.SaturacionOxigenoSpO2", dto.SaturacionOxigenoSpO2)
-                .Set("MetricasWearable.Pasos", dto.Pasos)
-                .Set(d => d.MedicionSolicitadaEn, null)
-                .Set(d => d.UltimaSincronizacion, DateTime.UtcNow);
-
-            var result = await _context.Dispositivos.UpdateOneAsync(filter, update);
-
-            return result.MatchedCount > 0;
-        }
-
-        public async Task<Dispositivo?> ObtenerDispositivoAsync(string idDispositivo)
-        {
-            if (!ObjectId.TryParse(idDispositivo, out _))
-            {
-                throw new ArgumentException("El identificador del dispositivo no tiene un formato válido.");
-            }
-
-            return await _context.Dispositivos.Find(d => d.Id == idDispositivo && d.Activo).FirstOrDefaultAsync();
-        }
-
-        public async Task<bool> SolicitarMedicionAsync(string idDispositivo)
-        {
-            if (!ObjectId.TryParse(idDispositivo, out _))
-            {
-                throw new ArgumentException("El identificador del dispositivo no tiene un formato válido.");
-            }
-
-            var update = Builders<Dispositivo>.Update.Set(d => d.MedicionSolicitadaEn, DateTime.UtcNow);
-            var result = await _context.Dispositivos.UpdateOneAsync(d => d.Id == idDispositivo && d.Activo, update);
-            return result.MatchedCount > 0;
-        }
-
-        public async Task<object> ObtenerComandosAsync(string idDispositivo, string watchAccessToken)
-        {
-            var dispositivo = await ObtenerDispositivoAsync(idDispositivo);
-            if (dispositivo is null || string.IsNullOrWhiteSpace(watchAccessToken) || dispositivo.WatchAccessToken != watchAccessToken)
-            {
-                throw new UnauthorizedAccessException("Las credenciales del wearable no son válidas.");
-            }
-
-            return new
-            {
-                comando = dispositivo.MedicionSolicitadaEn.HasValue ? "SOLICITAR_MEDICION" : null,
-                solicitadoEn = dispositivo.MedicionSolicitadaEn
-            };
-        }
     }
 }

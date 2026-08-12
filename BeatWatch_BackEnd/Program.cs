@@ -42,7 +42,8 @@ builder.Services.AddCors(options =>
                 "http://localhost:5173", // React / Vite (puerto por defecto)
                 "http://localhost:5174", // React / Vite (el puerto que usa tu compañero)
                 "http://localhost:3000",  // React clásico / Next.js
-                "https://frontend-beatwatch-857q.onrender.com"
+                "https://frontend-beatwatch-857q.onrender.com",
+                "https://beatwatch-frontend.onrender.com"
               )
               .AllowAnyHeader()
               .AllowAnyMethod()
@@ -118,6 +119,8 @@ builder.Services.AddScoped<IPacienteAccessService, PacienteAccessService>();
 builder.Services.AddScoped<ISaludService, SaludService>();
 builder.Services.AddHostedService<MongoDbInitializer>();
 builder.Services.AddScoped<IEstadisticaService, EstadisticaService>();
+builder.Services.AddScoped<IMedicionService, MedicionService>();
+builder.Services.AddScoped<IAlertaService, AlertaService>();
 builder.Services.AddControllers();
 builder.Services.AddHealthChecks();
 
@@ -160,12 +163,15 @@ builder.Services.AddSwaggerGen(c =>
 var app = builder.Build();
 
 // --- CONFIGURACIÓN DEL PIPELINE HTTP ---
-app.UseSwagger();
-app.UseSwaggerUI(options =>
+if (app.Environment.IsDevelopment())
 {
-    options.SwaggerEndpoint("/swagger/v1/swagger.json", "BeatWatch API v1");
-    options.RoutePrefix = "swagger";
-});
+    app.UseSwagger();
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/swagger/v1/swagger.json", "BeatWatch API v1");
+        options.RoutePrefix = "swagger";
+    });
+}
 
 app.UseHttpsRedirection();
 
@@ -179,6 +185,7 @@ app.Use(async (context, next) =>
     context.Response.Headers["X-Content-Type-Options"] = "nosniff";
     context.Response.Headers["X-Frame-Options"] = "DENY";
     context.Response.Headers["Referrer-Policy"] = "no-referrer";
+    context.Response.Headers["Content-Security-Policy"] = "default-src 'none';";
     await next();
 });
 

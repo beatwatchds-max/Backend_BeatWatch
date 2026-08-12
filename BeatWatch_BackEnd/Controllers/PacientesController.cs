@@ -1,5 +1,5 @@
-﻿using BeatWatch_BackEnd.Dtos;
-using BeatWatch_BackEnd.DTOs;
+using BeatWatch_BackEnd.Dtos;
+using BeatWatch_BackEnd.Dtos.pacientesDtos;
 using BeatWatch_BackEnd.infrescture;
 using BeatWatch_BackEnd.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -14,11 +14,13 @@ namespace BeatWatch_BackEnd.Controllers
     {
         private readonly IPacienteService _pacienteService;
         private readonly IPacienteAccessService _pacienteAccessService;
+        private readonly IMedicionService _medicionService;
 
-        public PacientesController(IPacienteService pacienteService, IPacienteAccessService pacienteAccessService)
+        public PacientesController(IPacienteService pacienteService, IPacienteAccessService pacienteAccessService, IMedicionService medicionService)
         {
             _pacienteService = pacienteService;
             _pacienteAccessService = pacienteAccessService;
+            _medicionService = medicionService;
         }
 
         // 1. POST /api/Pacientes/registrar
@@ -78,6 +80,7 @@ namespace BeatWatch_BackEnd.Controllers
                 return BadRequest(new { mensaje = ex.Message });
             }
         }
+
         [HttpGet("perfil/paciente/{idPaciente}")]
         [Authorize(Roles = "Administrador,Cuidador,Paciente")]
         public async Task<IActionResult> ObtenerPerfilPorPacienteId(string idPaciente)
@@ -89,24 +92,26 @@ namespace BeatWatch_BackEnd.Controllers
                 ? NotFound(new { mensaje = "El perfil del paciente no existe." })
                 : Ok(detallePaciente);
         }
+
+
         [HttpGet("usuario/{usuarioId}")]
         [Authorize]
         public async Task<IActionResult> ObtenerPerfilPorUsuarioId(string usuarioId)
         {
             try
             {
-                // Extraer el UsuarioId del Token JWT
-                var usuarioIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                                  ?? User.FindFirst("sub")?.Value;
-
                 var detallePaciente = await _pacienteService.ObtenerDetallePorUsuarioIdAsync(usuarioId);
 
                 if (detallePaciente == null)
                 {
-                    return NotFound(new { mensaje = "El perfil del paciente aún no ha sido registrado." });
+                    return NotFound(new { mensaje = "El perfil del paciente aún no ha sido registrado en esta licencia." });
                 }
 
-                if (!await _pacienteAccessService.PuedeAccederAsync(User, detallePaciente.PacienteId)) return Forbid();
+                // Se valida el acceso contra el PacienteId resultante
+                if (!await _pacienteAccessService.PuedeAccederAsync(User, detallePaciente.PacienteId))
+                {
+                    return Forbid();
+                }
 
                 return Ok(detallePaciente);
             }
@@ -127,13 +132,17 @@ namespace BeatWatch_BackEnd.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
+            // Obtener el detalle del paciente para identificar el PacienteId real y validar permisos
             var detallePaciente = await _pacienteService.ObtenerDetallePorUsuarioIdAsync(usuarioId);
             if (detallePaciente is null)
             {
                 return NotFound(new { mensaje = "No se encontró el perfil del paciente para actualizar." });
             }
 
-            if (!await _pacienteAccessService.PuedeAccederAsync(User, detallePaciente.PacienteId)) return Forbid();
+            if (!await _pacienteAccessService.PuedeAccederAsync(User, detallePaciente.PacienteId))
+            {
+                return Forbid();
+            }
 
             var actualizado = await _pacienteService.ActualizarPerfilPacienteAsync(usuarioId, dto);
 
@@ -191,6 +200,36 @@ namespace BeatWatch_BackEnd.Controllers
             catch (Exception)
             {
                 return StatusCode(500, new { mensaje = "Error al completar el registro del paciente." });
+            }
+        }
+
+        [Authorize]
+        [HttpGet("{idPaciente}/mediciones")]
+        public async Task<IActionResult> ObtenerHistorialMediciones(string idPaciente,[FromQuery] DateTime? desde = null,[FromQuery] DateTime? hasta = null, [FromQuery] int limite = 100)
+        {
+            try
+            {
+                // Validar acceso del usuario al paciente
+                if (!await _pacienteAccessService.PuedeAccederAsync(User, idPaciente))
+                {
+                    return Forbid();
+                }
+
+                var mediciones = await _medicionService.ObtenerHistorialPacienteAsync(idPaciente, desde, hasta, limite);
+
+                return Ok(new HistorialMedicionesResponseDto
+                {
+                    Success = true,
+                    Mediciones = mediciones
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { success = false, mensaje = ex.Message });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new { success = false, mensaje = "Error al obtener el historial de mediciones." });
             }
         }
     }

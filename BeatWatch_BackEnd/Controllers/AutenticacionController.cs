@@ -1,9 +1,9 @@
 ﻿using BeatWatch_BackEnd.Dtos;
-using BeatWatch_BackEnd.DTOs;
 using BeatWatch_BackEnd.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Authorization;
+using BeatWatch_BackEnd.Dtos.Login;
 
 namespace BeatWatch_BackEnd.Controllers
 {
@@ -28,16 +28,38 @@ namespace BeatWatch_BackEnd.Controllers
                 return BadRequest(new { mensaje = "El token debe tener exactamente 9 dígitos." });
             }
 
-            // 'respuesta' ya trae el JWT + Nombre + Correo + Telefono + Rol
-            var respuesta = await _authService.ValidarTokenYGenerarJwtAsync(loginDto.Token);
-
-            if (respuesta == null)
+            try
             {
-                return Unauthorized(new { mensaje = "Token inválido o paciente no encontrado." });
-            }
+                var respuesta = await _authService.ValidarTokenYGenerarJwtAsync(loginDto.Token);
 
-            // Devolvemos el DTO completo con status 200 OK
-            return Ok(respuesta);
+                if (respuesta == null)
+                {
+                    return Unauthorized(new { mensaje = "Token inválido o paciente no encontrado." });
+                }
+
+                return Ok(respuesta);
+            }
+            catch (InvalidOperationException ex)
+            {
+                // 🟢 Bloqueo a un segundo dispositivo mientras la sesión esté activa
+                return StatusCode(409, new { mensaje = ex.Message }); // 409 Conflict
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new { mensaje = "Error interno al procesar el inicio de sesión." });
+            }
+        }
+
+        // 🟢 Endpoint para liberar la sesión activa desde la app móvil
+        [HttpPost("cerrar-sesion-movil")]
+        [Authorize]
+        public async Task<IActionResult> CerrarSesionMovil()
+        {
+            var usuarioId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(usuarioId)) return Unauthorized();
+
+            await _authService.CerrarSesionMovilAsync(usuarioId);
+            return Ok(new { mensaje = "Sesión cerrada correctamente." });
         }
 
 

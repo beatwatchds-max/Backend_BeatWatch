@@ -1,4 +1,4 @@
-﻿using BeatWatch_BackEnd.infrescture;
+using BeatWatch_BackEnd.infrescture;
 using BeatWatch_BackEnd.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -25,7 +25,13 @@ namespace BeatWatch_BackEnd.Controllers
         {
             try
             {
-                var resultado = await _estadisticaService.ObtenerPacientesUnicosConUltimoRegistroAsync();
+                var idLicenciaClaim = User.FindFirst("idLicencia")?.Value ?? User.FindFirst("LicenciaId")?.Value;
+                if (string.IsNullOrEmpty(idLicenciaClaim))
+                {
+                    return BadRequest(new { mensaje = "No se encontró el identificador de licencia en el token de autenticación." });
+                }
+
+                var resultado = await _estadisticaService.ObtenerPacientesUnicosConUltimoRegistroAsync(idLicenciaClaim);
                 return Ok(resultado);
             }
             catch (Exception)
@@ -37,10 +43,7 @@ namespace BeatWatch_BackEnd.Controllers
         // GET /api/estadisticas/{id_paciente}
         // GET /api/estadisticas/{id_paciente}?fecha_inicio=2026-07-01&fecha_fin=2026-07-31
         [HttpGet("estadisticas/{id_paciente}")]
-        public async Task<IActionResult> ObtenerEstadisticasPaciente(
-            string id_paciente,
-            [FromQuery] DateTime? fecha_inicio = null,
-            [FromQuery] DateTime? fecha_fin = null)
+        public async Task<IActionResult> ObtenerEstadisticasPaciente(string id_paciente,[FromQuery] DateTime? fecha_inicio = null,  [FromQuery] DateTime? fecha_fin = null)
         {
             try
             {
@@ -77,11 +80,7 @@ namespace BeatWatch_BackEnd.Controllers
         // GET /api/graficas/{id_paciente}/bpm?fecha_inicio=2026-07-01&fecha_fin=2026-07-31
         // GET /api/graficas/{id_paciente}/bpm?dias=30
         [HttpGet("graficas/{id_paciente}/bpm")]
-        public async Task<IActionResult> ObtenerGraficaBpm(
-            string id_paciente,
-            [FromQuery] DateTime? fecha_inicio = null,
-            [FromQuery] DateTime? fecha_fin = null,
-            [FromQuery] int dias = 7)
+        public async Task<IActionResult> ObtenerGraficaBpm(string id_paciente,[FromQuery] DateTime? fecha_inicio = null,[FromQuery] DateTime? fecha_fin = null,[FromQuery] int dias = 7)
         {
             try
             {
@@ -105,11 +104,7 @@ namespace BeatWatch_BackEnd.Controllers
         // GET /api/graficas/{id_paciente}/episodios?fecha_inicio=2026-07-01&fecha_fin=2026-07-31
         // GET /api/graficas/{id_paciente}/episodios?dias=30
         [HttpGet("graficas/{id_paciente}/episodios")]
-        public async Task<IActionResult> ObtenerGraficaEpisodios(
-            string id_paciente,
-            [FromQuery] DateTime? fecha_inicio = null,
-            [FromQuery] DateTime? fecha_fin = null,
-            [FromQuery] int dias = 7)
+        public async Task<IActionResult> ObtenerGraficaEpisodios(string id_paciente,[FromQuery] DateTime? fecha_inicio = null,[FromQuery] DateTime? fecha_fin = null, [FromQuery] int dias = 7)
         {
             try
             {
@@ -132,11 +127,7 @@ namespace BeatWatch_BackEnd.Controllers
         // GET /api/graficas/{id_paciente}/series?metricas=BPMPromedio,BPMMinimo,BPMMaximo
         // GET /api/graficas/{id_paciente}/series?fecha_inicio=2026-07-01&fecha_fin=2026-07-31&metricas=BPMPromedio,Pasos
         [HttpGet("graficas/{id_paciente}/series")]
-        public async Task<IActionResult> ObtenerGraficaSeries(
-            string id_paciente,
-            [FromQuery] DateTime? fecha_inicio = null,
-            [FromQuery] DateTime? fecha_fin = null,
-            [FromQuery] string? metricas = null)
+        public async Task<IActionResult> ObtenerGraficaSeries(string id_paciente,[FromQuery] DateTime? fecha_inicio = null,[FromQuery] DateTime? fecha_fin = null, [FromQuery] string? metricas = null)
         {
             try
             {
@@ -160,11 +151,7 @@ namespace BeatWatch_BackEnd.Controllers
         // GET /api/graficas/{id_paciente}/resumen?dias=30
         // GET /api/graficas/{id_paciente}/resumen?fecha_inicio=2026-07-01&fecha_fin=2026-07-31
         [HttpGet("graficas/{id_paciente}/resumen")]
-        public async Task<IActionResult> ObtenerResumenKpi(
-            string id_paciente,
-            [FromQuery] DateTime? fecha_inicio = null,
-            [FromQuery] DateTime? fecha_fin = null,
-            [FromQuery] int dias = 30)
+        public async Task<IActionResult> ObtenerResumenKpi(string id_paciente,[FromQuery] DateTime? fecha_inicio = null,[FromQuery] DateTime? fecha_fin = null, [FromQuery] int dias = 30)
         {
             try
             {

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using BeatWatch_BackEnd.Data;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
@@ -6,6 +7,7 @@ namespace BeatWatch_BackEnd.Controllers
 {
     [ApiController]
     [Route("api/test")]
+    [Authorize(Roles = "Administrador")]
     public class DatabaseTestController : ControllerBase
     {
         private readonly MongoDbContext _dbContext;

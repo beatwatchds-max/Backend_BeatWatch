@@ -1,5 +1,7 @@
-using BeatWatch_BackEnd.Dtos;
+using BeatWatch_BackEnd.Dtos.cuidadores;
 using BeatWatch_BackEnd.Models;
+using BeatWatch_BackEnd.Models.Registro;
+using BeatWatch_BackEnd.Models.Usuarios;
 
 namespace BeatWatch_BackEnd.infrescture
 {

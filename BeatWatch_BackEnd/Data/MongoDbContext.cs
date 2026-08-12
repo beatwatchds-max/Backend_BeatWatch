@@ -1,5 +1,6 @@
 using BeatWatch_BackEnd.Configuration;
 using BeatWatch_BackEnd.Models;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
 
@@ -7,19 +8,21 @@ namespace BeatWatch_BackEnd.Data
 {
     public class MongoDbContext
     {
-        private readonly IMongoDatabase _database = null!;
+        private readonly IMongoDatabase _database;
+        private readonly ILogger<MongoDbContext> _logger;
 
-    
-        public MongoDbContext()
+        protected MongoDbContext()
         {
+            _database = null!;
+            _logger = null!;
         }
 
-        public MongoDbContext(IOptions<MongoDbSettings> settings)
+        public MongoDbContext(IOptions<MongoDbSettings> settings, ILogger<MongoDbContext> logger)
         {
+            _logger = logger;
             var client = new MongoClient(settings.Value.ConnectionString);
             _database = client.GetDatabase(settings.Value.DatabaseName);
 
-         
             CrearIndices();
         }
 
@@ -31,15 +34,16 @@ namespace BeatWatch_BackEnd.Data
         public virtual IMongoCollection<EpisodioArritmia> EpisodiosArritmia => _database.GetCollection<EpisodioArritmia>("EpisodiosArritmia");
         public virtual IMongoCollection<ActividadDiaria> ActividadesDiarias => _database.GetCollection<ActividadDiaria>("ActividadesDiarias");
         public virtual IMongoCollection<SesionEmparejamiento> SesionesEmparejamiento => _database.GetCollection<SesionEmparejamiento>("SesionesEmparejamiento");
-        public virtual IMongoCollection<EstadisticaDiaria> EstadisticasDiarias => _database.GetCollection<EstadisticaDiaria>("EstadisticaDiaria");
+        public virtual IMongoCollection<EstadisticasDiarias> EstadisticasDiarias => _database.GetCollection<EstadisticasDiarias>("EstadisticasDiarias");
+        public virtual IMongoCollection<MedicionFrecuenciaCardiaca> MedicionesFrecuenciaCardiaca => _database.GetCollection<MedicionFrecuenciaCardiaca>("MedicionesFrecuenciaCardiaca");
+        public virtual IMongoCollection<AlertaDispositivo> AlertasDispositivos =>_database.GetCollection<AlertaDispositivo>("AlertasDispositivos");
 
-      
         private void CrearIndices()
         {
             try
             {
          
-                var indexKeys = Builders<EstadisticaDiaria>.IndexKeys
+                var indexKeys = Builders<EstadisticasDiarias>.IndexKeys
                     .Ascending(e => e.IdPaciente)
                     .Ascending(e => e.Fecha);
 
@@ -49,7 +53,7 @@ namespace BeatWatch_BackEnd.Data
                     Name = "ux_IdPaciente_Fecha"
                 };
 
-                var indexModel = new CreateIndexModel<EstadisticaDiaria>(indexKeys, indexOptions);
+                var indexModel = new CreateIndexModel<EstadisticasDiarias>(indexKeys, indexOptions);
 
             
                 EstadisticasDiarias.Indexes.CreateOne(indexModel);
@@ -57,11 +61,11 @@ namespace BeatWatch_BackEnd.Data
             catch (MongoCommandException ex)
             {
                 // Loggear advertencia (por ejemplo con ILogger o Console)
-                Console.WriteLine($"Nota de Índice: {ex.Message}");
+                _logger.LogWarning("Nota de Índice: {Message}", ex.Message);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error general al crear índices: {ex.Message}");
+                _logger.LogError(ex, "Error al crear índices de la base de datos");
             }
         }
     }

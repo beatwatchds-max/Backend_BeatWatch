@@ -1,5 +1,6 @@
 using BeatWatch_BackEnd.Data;
-using BeatWatch_BackEnd.Dtos;
+using BeatWatch_BackEnd.Dtos.arritmia;
+using BeatWatch_BackEnd.Dtos.historial;
 using BeatWatch_BackEnd.infrescture;
 using BeatWatch_BackEnd.Models;
 using MongoDB.Driver;
@@ -15,6 +16,7 @@ public class SaludService : ISaludService
         _context = context;
     }
 
+    #region Arritmias registro
     public async Task<Arritmia> RegistrarArritmiaAsync(RegistrarArritmiaDto solicitud, CancellationToken cancellationToken)
     {
         var arritmia = new Arritmia
@@ -50,13 +52,6 @@ public class SaludService : ISaludService
         return arritmia;
     }
 
-    public async Task<IReadOnlyList<EpisodioArritmia>> ObtenerHistorialArritmiasAsync(string idPaciente, CancellationToken cancellationToken)
-    {
-        return await _context.EpisodiosArritmia
-            .Find(episodio => episodio.IdPaciente == idPaciente)
-            .Sort(Builders<EpisodioArritmia>.Sort.Descending(episodio => episodio.Fecha))
-            .ToListAsync(cancellationToken);
-    }
     public async Task<EpisodioArritmia> RegistrarAlertaFrecuenciaAsync(RegistrarAlertaFrecuenciaDto solicitud, CancellationToken cancellationToken)
     {
         var episodio = new EpisodioArritmia
@@ -94,6 +89,17 @@ public class SaludService : ISaludService
 
         await _context.ActividadesDiarias.UpdateOneAsync(filter, update, options, cancellationToken);
     }
+    #endregion
+
+    #region Historial
+    public async Task<IReadOnlyList<EpisodioArritmia>> ObtenerHistorialArritmiasAsync(string idPaciente, CancellationToken cancellationToken)
+    {
+        return await _context.EpisodiosArritmia
+            .Find(episodio => episodio.IdPaciente == idPaciente)
+            .Sort(Builders<EpisodioArritmia>.Sort.Descending(episodio => episodio.Fecha))
+            .ToListAsync(cancellationToken);
+    }
+ 
 
     public async Task<ResumenTableroDto> ObtenerResumenTableroAsync(string idPaciente, int dias, CancellationToken cancellationToken)
     {
@@ -148,4 +154,6 @@ public class SaludService : ISaludService
             ConteoSintomas = conteoSintomas
         };
     }
+
+    #endregion
 }

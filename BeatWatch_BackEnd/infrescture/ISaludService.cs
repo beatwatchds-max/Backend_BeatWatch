@@ -1,4 +1,5 @@
-using BeatWatch_BackEnd.Dtos;
+using BeatWatch_BackEnd.Dtos.arritmia;
+using BeatWatch_BackEnd.Dtos.historial;
 using BeatWatch_BackEnd.Models;
 
 namespace BeatWatch_BackEnd.infrescture;

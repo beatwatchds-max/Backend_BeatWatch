@@ -4,6 +4,7 @@ using System.Text;
 using BeatWatch_BackEnd.Configuration;
 using BeatWatch_BackEnd.infrescture;
 using BeatWatch_BackEnd.Models;
+using BeatWatch_BackEnd.Models.LoginR;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
