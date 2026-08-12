@@ -30,7 +30,7 @@ jobs:
       run: dotnet restore BeatWatch_BackEnd/BeatWatch_BackEnd.csproj
 
     - name: Dependency Vulnerability Audit
-      run: dotnet list BeatWatch_BackEnd/BeatWatch_BackEnd.csproj package --vulnerable --include-transitive
+      run: dotnet list BeatWatch_BackEnd/BeatWatch_BackEnd.csproj package --vulnerable --include-transitive --severity high
 
     - name: Configuration scan
       uses: aquasecurity/trivy-action@v0.36.0
@@ -48,6 +48,9 @@ jobs:
 
     - name: Build project
       run: dotnet build BeatWatch_BackEnd/BeatWatch_BackEnd.csproj --no-restore --configuration Release
+
+    - name: Run tests
+      run: dotnet test BeatWatch_BackEnd.Tests/BeatWatch_BackEnd.Tests.csproj --configuration Release --no-restore
 
   deployment-smoke-test:
     name: Container Deployment Smoke Test
