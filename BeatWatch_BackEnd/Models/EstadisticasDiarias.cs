@@ -10,73 +10,52 @@ namespace BeatWatch_BackEnd.Models
         [BsonRepresentation(BsonType.ObjectId)]
         public string? Id { get; set; }
 
+        [BsonElement("Fecha")]
+        public string Fecha { get; set; } = null!;
+
         [BsonElement("IdPaciente")]
         [BsonRepresentation(BsonType.ObjectId)]
         public string IdPaciente { get; set; } = null!;
 
-        [BsonElement("Fecha")]
+        [BsonElement("AlertasCriticas")]
+        public int AlertasCriticas { get; set; }
+
+        [BsonElement("DistanciaTotalKm")]
+        public double DistanciaTotalKm { get; set; }
+
+        [BsonElement("DuracionTotalEpisodios")]
+        public int DuracionTotalEpisodios { get; set; }
+
+        [BsonElement("FechaActualizacion")]
         [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
-        public DateTime Fecha { get; set; }
+        public DateTime FechaActualizacion { get; set; }
 
-        [BsonElement("FrecuenciaCardiaca")]
-        public MetricasFrecuenciaCardiaca FrecuenciaCardiaca { get; set; } = new();
-
-        [BsonElement("Arritmias")]
-        public MetricasArritmias Arritmias { get; set; } = new();
-
-        [BsonElement("Actividad")]
-        public MetricasActividad Actividad { get; set; } = new();
-
-        [BsonElement("UpdatedAt")]
+        [BsonElement("FechaCreacion")]
         [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
-        public DateTime UpdatedAt { get; set; }
-    }
+        public DateTime FechaCreacion { get; set; }
 
-    public class MetricasFrecuenciaCardiaca
-    {
-        [BsonElement("Promedio")]
-        public double Promedio { get; set; }
+        [BsonElement("FrecuenciaMaxima")]
+        public double? FrecuenciaMaxima { get; set; }
 
-        [BsonElement("Minimo")]
-        public int Minimo { get; set; }
+        [BsonElement("FrecuenciaMinima")]
+        public double? FrecuenciaMinima { get; set; }
 
-        [BsonElement("Maximo")]
-        public int Maximo { get; set; }
-
-        [BsonElement("Mediana")]
-        public double Mediana { get; set; }
-
-        [BsonElement("Lecturas")]
-        public int Lecturas { get; set; }
-    }
-
-    public class MetricasArritmias
-    {
-        [BsonElement("Total")]
-        public int Total { get; set; }
-
-        [BsonElement("Criticas")]
-        public int Criticas { get; set; }
-
-        [BsonElement("DuracionTotalSeconds")]
-        public int DuracionTotalSeconds { get; set; }
-
-        [BsonElement("DuracionPromedioSeconds")]
-        public double DuracionPromedioSeconds { get; set; }
-    }
-
-    public class MetricasActividad
-    {
-        [BsonElement("Pasos")]
-        public int Pasos { get; set; }
-
-        [BsonElement("Calorias")]
-        public double Calorias { get; set; }
-
-        [BsonElement("DistanciaKm")]
-        public double DistanciaKm { get; set; }
+        [BsonElement("FrecuenciaPromedio")]
+        public double? FrecuenciaPromedio { get; set; }
 
         [BsonElement("HorasSueno")]
-        public double HorasSueno { get; set; }
+        public double? HorasSueno { get; set; }
+
+        [BsonElement("TotalArritmias")]
+        public int TotalArritmias { get; set; }
+
+        [BsonElement("TotalCalorias")]
+        public double TotalCalorias { get; set; }
+
+        [BsonElement("TotalEpisodios")]
+        public int TotalEpisodios { get; set; }
+
+        [BsonElement("TotalPasos")]
+        public int TotalPasos { get; set; }
     }
 }
