@@ -4,16 +4,25 @@ using BeatWatch_BackEnd.infrescture;
 using BeatWatch_BackEnd.Models;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using Microsoft.AspNetCore.DataProtection;
+using System.Security.Cryptography;
 
 namespace BeatWatch_BackEnd.Services
 {
     public class DispositivoService : IDispositivoService
     {
         private readonly MongoDbContext _context;
+        private readonly IDataProtector _tokenProtector;
 
-        public DispositivoService(MongoDbContext context)
+        public DispositivoService(MongoDbContext context, IDataProtectionProvider dataProtectionProvider)
         {
             _context = context;
+            _tokenProtector = dataProtectionProvider.CreateProtector("BeatWatch.DispositivoTokens.v1");
+        }
+
+        public DispositivoService(MongoDbContext context)
+            : this(context, DataProtectionProvider.Create("BeatWatch"))
+        {
         }
         #region Emparejamiento y auxiliares 
         public async Task<SesionEmparejamientoResponseDto> CrearSesionEmparejamientoAsync(CrearSesionEmparejamientoDto dto)
@@ -27,7 +36,7 @@ namespace BeatWatch_BackEnd.Services
             {
                 IdSesion = idSesion,
                 TokenEmparejamiento = tokenEmparejamiento,
-                WatchSecret = watchSecret,
+                WatchSecretHash = BCrypt.Net.BCrypt.HashPassword(watchSecret),
                 Estado = "PENDIENTE",
                 NumeroSerie = dto.NumeroSerie.Trim().ToUpperInvariant(),
                 Alias = dto.Alias?.Trim() ?? "Galaxy Watch",
@@ -89,6 +98,7 @@ namespace BeatWatch_BackEnd.Services
             // Generar credenciales para el canal de comandos del wearable.
             string accessToken = $"WATCH_ACCESS_{Guid.NewGuid():N}";
             string refreshToken = $"WATCH_REFRESH_{Guid.NewGuid():N}";
+            var accessTokenExpiraEn = DateTime.UtcNow.AddDays(30);
 
             // Crear el registro oficial del dispositivo
             var nuevoDispositivo = new Dispositivo
@@ -103,7 +113,8 @@ namespace BeatWatch_BackEnd.Services
                 FechaRegistro = DateTime.UtcNow,
                 UltimaSincronizacion = DateTime.UtcNow,
                 Activo = true,
-                WatchAccessToken = accessToken,
+                WatchAccessToken = _tokenProtector.Protect(accessToken),
+                WatchAccessTokenExpiraEn = accessTokenExpiraEn,
                 MetricasWearable = new MetricasWearableDto
                 {
                     FrecuenciaCardiacaBpm = 0,
@@ -118,8 +129,9 @@ namespace BeatWatch_BackEnd.Services
             var updateEmparejado = Builders<SesionEmparejamiento>.Update
                 .Set(s => s.Estado, "EMPAREJADO")
                 .Set(s => s.IdDispositivo, nuevoDispositivo.Id)
-                .Set(s => s.AccessToken, accessToken)
-                .Set(s => s.RefreshToken, refreshToken);
+                .Set(s => s.AccessToken, _tokenProtector.Protect(accessToken))
+                .Set(s => s.RefreshToken, _tokenProtector.Protect(refreshToken))
+                .Set(s => s.AccessTokenExpiraEn, accessTokenExpiraEn);
 
             await _context.SesionesEmparejamiento.UpdateOneAsync(s => s.Id == sesion.Id, updateEmparejado);
 
@@ -133,7 +145,7 @@ namespace BeatWatch_BackEnd.Services
                 .Find(s => s.IdSesion == idSesion)
                 .FirstOrDefaultAsync();
 
-            if (sesion == null || sesion.WatchSecret != watchSecret)
+            if (sesion == null || !EsWatchSecretValido(sesion, watchSecret))
             {
                 throw new UnauthorizedAccessException("Credenciales de sesión o secreto no válidos.");
             }
@@ -161,9 +173,9 @@ namespace BeatWatch_BackEnd.Services
                     estado = "EMPAREJADO",
                     idDispositivo = sesion.IdDispositivo,
                     codigoDispositivo = sesion.CodigoDispositivo,
-                    accessToken = sesion.AccessToken,
-                    refreshToken = sesion.RefreshToken,
-                    accessTokenExpiraEn = DateTime.UtcNow.AddDays(30).ToString("yyyy-MM-ddTHH:mm:ssZ")
+                    accessToken = DesprotegerToken(sesion.AccessToken),
+                    refreshToken = DesprotegerToken(sesion.RefreshToken),
+                    accessTokenExpiraEn = sesion.AccessTokenExpiraEn?.ToString("yyyy-MM-ddTHH:mm:ssZ")
                 },
                 "EXPIRADO" => new
                 {
@@ -178,6 +190,25 @@ namespace BeatWatch_BackEnd.Services
                     message = "La sesión fue anulada o cancelada"
                 }
             };
+        }
+
+        private static bool EsWatchSecretValido(SesionEmparejamiento sesion, string watchSecret) =>
+            !string.IsNullOrWhiteSpace(sesion.WatchSecretHash)
+                ? BCrypt.Net.BCrypt.Verify(watchSecret, sesion.WatchSecretHash)
+                : !string.IsNullOrWhiteSpace(sesion.WatchSecret) && string.Equals(watchSecret, sesion.WatchSecret, StringComparison.Ordinal);
+
+        private string? DesprotegerToken(string? tokenProtegido)
+        {
+            if (string.IsNullOrWhiteSpace(tokenProtegido)) return null;
+            try
+            {
+                return _tokenProtector.Unprotect(tokenProtegido);
+            }
+            catch (CryptographicException)
+            {
+                // Pairing records created before this change remain valid only until they expire.
+                return tokenProtegido;
+            }
         }
         #endregion
 
@@ -231,6 +262,17 @@ namespace BeatWatch_BackEnd.Services
             }
 
             return await _context.Dispositivos.Find(d => d.Id == idDispositivo && d.Activo).FirstOrDefaultAsync();
+        }
+
+        public async Task<bool> ValidarTokenDeDispositivoAsync(string idDispositivo, string token)
+        {
+            if (string.IsNullOrWhiteSpace(token)) return false;
+            var dispositivo = await _context.Dispositivos
+                .Find(d => (d.Id == idDispositivo || d.CodigoDispositivo == idDispositivo) && d.Activo)
+                .FirstOrDefaultAsync();
+            if (dispositivo?.WatchAccessToken is null || dispositivo.WatchAccessTokenExpiraEn <= DateTime.UtcNow) return false;
+
+            return string.Equals(DesprotegerToken(dispositivo.WatchAccessToken), token, StringComparison.Ordinal);
         }
         #endregion
 

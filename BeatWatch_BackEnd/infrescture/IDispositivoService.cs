@@ -13,6 +13,7 @@ namespace BeatWatch_BackEnd.infrescture
         Task<bool> EliminarDispositivoAsync(string id);
   
         Task<Dispositivo?> ObtenerDispositivoAsync(string idDispositivo);
+        Task<bool> ValidarTokenDeDispositivoAsync(string idDispositivo, string token);
 
         Task<List<Dispositivo>> ObtenerDispositivosPorLicenciaAsync(string idLicencia);
         Task<List<Dispositivo>> ObtenerDispositivosPorPacienteAsync(string? idPaciente);

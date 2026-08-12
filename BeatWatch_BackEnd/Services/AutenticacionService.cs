@@ -137,6 +137,7 @@ namespace BeatWatch_BackEnd.Services
         new Claim(ClaimTypes.Name, usuario.Nombre),
         new Claim(ClaimTypes.Role, usuario.Rol),
         new Claim("idLicencia", idLicenciaEncontrada),
+        new Claim("tipoSesion", "movil"),
         new Claim(JwtRegisteredClaimNames.Jti, nuevaSesionId)
     };
 

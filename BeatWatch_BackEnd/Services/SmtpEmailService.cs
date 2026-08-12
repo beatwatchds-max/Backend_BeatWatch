@@ -20,6 +20,8 @@ public sealed class SmtpEmailService : IEmailService
     {
         if (string.IsNullOrWhiteSpace(_settings.SmtpHost)
             || string.IsNullOrWhiteSpace(_settings.FromAddress)
+            || string.IsNullOrWhiteSpace(_settings.SmtpUsername)
+            || string.IsNullOrWhiteSpace(_settings.SmtpPassword)
             || string.IsNullOrWhiteSpace(_settings.PasswordResetUrl))
         {
             throw new InvalidOperationException("La configuracion de correo para recuperacion no esta completa.");

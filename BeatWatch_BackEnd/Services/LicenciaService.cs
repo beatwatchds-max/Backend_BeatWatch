@@ -1,7 +1,7 @@
 ﻿using BeatWatch_BackEnd.Models;
 using BeatWatch_BackEnd.Data;
 using MongoDB.Driver;
-using BeatWatch_BackEnd.Dtos.licencia;
+using MongoDB.Bson;
 
 namespace BeatWatch_BackEnd.Services
 {
@@ -14,16 +14,23 @@ namespace BeatWatch_BackEnd.Services
             _context = context;
         }
 
-        public async Task<Licencia?> ProcesarPagoYCrearLicenciaAsync(ActivarLicenciaGratuitaDto dto)
+        public async Task<Licencia?> ActivarLicenciaGratuitaAsync(string usuarioId)
         {
-            // 1. Buscar al usuario por ID o por Correo para validar existencia
+            if (!ObjectId.TryParse(usuarioId, out _)) throw new ArgumentException("El usuario autenticado no tiene un identificador válido.");
+
+            // The identity must come from the authenticated JWT, never from client input.
             var usuario = await _context.Usuarios
-                .Find(u => u.Id == dto.UsuarioId || u.Correo == dto.CorreoElectronico)
+                .Find(u => u.Id == usuarioId)
                 .FirstOrDefaultAsync();
 
             if (usuario == null)
             {
-                throw new ArgumentException("El usuario proporcionado no existe en el sistema.");
+                throw new ArgumentException("El usuario autenticado no existe en el sistema.");
+            }
+
+            if (await _context.Licencias.Find(l => l.UsuarioId == usuarioId && l.Activa && l.MetodoPago == "Gratuito").AnyAsync())
+            {
+                throw new InvalidOperationException("El usuario ya tiene una licencia gratuita activa.");
             }
 
             // 2. Generar Código de Grupo único para el Plan Grupal Gratuito

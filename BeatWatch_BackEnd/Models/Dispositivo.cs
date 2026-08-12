@@ -1,5 +1,6 @@
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
+using System.Text.Json.Serialization;
 
 namespace BeatWatch_BackEnd.Models
 {
@@ -62,7 +63,13 @@ namespace BeatWatch_BackEnd.Models
         public DateTime? MedicionSolicitadaEn { get; set; }
 
         [BsonElement("WatchAccessToken")]
+        [JsonIgnore]
         public string? WatchAccessToken { get; set; }
+
+        [BsonElement("WatchAccessTokenExpiraEn")]
+        [JsonIgnore]
+        [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
+        public DateTime? WatchAccessTokenExpiraEn { get; set; }
     }
 
     public class MetricasWearableDto

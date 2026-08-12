@@ -16,7 +16,10 @@ namespace BeatWatch_BackEnd.Models
         public string TokenEmparejamiento { get; set; } = string.Empty; // Token temporal leído en QR
 
         [BsonElement("WatchSecret")]
-        public string WatchSecret { get; set; } = string.Empty; // Secreto para la cabecera X-Watch-Secret
+        public string? WatchSecret { get; set; } // Legacy sessions expire within minutes.
+
+        [BsonElement("WatchSecretHash")]
+        public string? WatchSecretHash { get; set; }
 
         [BsonElement("Estado")]
         public string Estado { get; set; } = "PENDIENTE"; // PENDIENTE, EMPAREJADO, EXPIRADO, CANCELADO
@@ -34,6 +37,8 @@ namespace BeatWatch_BackEnd.Models
         public string? IdDispositivo { get; set; }
         public string? AccessToken { get; set; }
         public string? RefreshToken { get; set; }
+        [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
+        public DateTime? AccessTokenExpiraEn { get; set; }
 
         [BsonElement("FechaCreacion")]
         public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;

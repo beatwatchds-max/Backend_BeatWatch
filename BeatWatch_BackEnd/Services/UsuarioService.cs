@@ -220,15 +220,16 @@ public class UsuarioService : IUsuarioService
 
     #endregion
 
-    public async Task<bool> DesactivarAsync(string id, CancellationToken cancellationToken = default)
+    public async Task<bool> DesactivarAsync(string id, string idLicencia, CancellationToken cancellationToken = default)
     {
         var usuarioId = ValidarObjectId(id, nameof(id));
+        var licenciaId = ValidarObjectId(idLicencia, nameof(idLicencia));
         var update = Builders<Usuario>.Update
             .Set(u => u.Activo, false)
             .Unset(u => u.RestablecimientoContrasenaTokenHash)
             .Unset(u => u.RestablecimientoContrasenaExpiraEn);
         var result = await _context.Usuarios.UpdateOneAsync(
-            u => u.Id == usuarioId,
+            u => u.Id == usuarioId && u.IdLicencia == licenciaId,
             update,
             cancellationToken: cancellationToken);
 
@@ -236,30 +237,37 @@ public class UsuarioService : IUsuarioService
     }
 
     #region cuidadores
-    public async Task<bool> ActualizarCuidadoresAsync(string id,IReadOnlyCollection<string> cuidadores, CancellationToken cancellationToken = default)
+    public async Task<bool> ActualizarCuidadoresAsync(string id,IReadOnlyCollection<string> cuidadores, string idLicencia, CancellationToken cancellationToken = default)
     {
         var usuarioId = ValidarObjectId(id, nameof(id));
+        var licenciaId = ValidarObjectId(idLicencia, nameof(idLicencia));
         ArgumentNullException.ThrowIfNull(cuidadores);
         var cuidadoresNormalizados = cuidadores
             .Select(cuidadorId => ValidarObjectId(cuidadorId, "cuidadorId"))
             .Distinct(StringComparer.Ordinal)
             .ToList();
+        if (cuidadoresNormalizados.Count > 0)
+        {
+            var cuidadoresValidos = await _context.Usuarios.CountDocumentsAsync(u => cuidadoresNormalizados.Contains(u.Id!) && u.IdLicencia == licenciaId && u.Rol == "Cuidador" && u.Activo, cancellationToken: cancellationToken);
+            if (cuidadoresValidos != cuidadoresNormalizados.Count) throw new ArgumentException("Todos los cuidadores deben estar activos y pertenecer a la misma licencia.");
+        }
         var update = Builders<Usuario>.Update.Set(u => u.Cuidadores, cuidadoresNormalizados);
         var result = await _context.Usuarios.UpdateOneAsync(
-            u => u.Id == usuarioId,
+            u => u.Id == usuarioId && u.IdLicencia == licenciaId,
             update,
             cancellationToken: cancellationToken);
 
         return result.MatchedCount == 1;
     }
 
-    public async Task<bool> DesvincularCuidadorAsync(string id,string cuidadorId,  CancellationToken cancellationToken = default)
+    public async Task<bool> DesvincularCuidadorAsync(string id,string cuidadorId, string idLicencia, CancellationToken cancellationToken = default)
     {
         var usuarioId = ValidarObjectId(id, nameof(id));
         var cuidadorIdValidado = ValidarObjectId(cuidadorId, nameof(cuidadorId));
+        var licenciaId = ValidarObjectId(idLicencia, nameof(idLicencia));
         var update = Builders<Usuario>.Update.Pull(u => u.Cuidadores, cuidadorIdValidado);
         var result = await _context.Usuarios.UpdateOneAsync(
-            u => u.Id == usuarioId,
+            u => u.Id == usuarioId && u.IdLicencia == licenciaId,
             update,
             cancellationToken: cancellationToken);
 

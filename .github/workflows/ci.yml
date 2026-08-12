@@ -14,6 +14,16 @@ jobs:
     name: Test & Security Scan
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    services:
+      mongo:
+        image: mongo:8.2
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.runCommand(\"ping\").ok'"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
 
     steps:
     - name: Checkout repository
@@ -27,10 +37,16 @@ jobs:
         dotnet-version: '10.0.x'
 
     - name: Restore dependencies
-      run: dotnet restore BeatWatch_BackEnd/BeatWatch_BackEnd.csproj
+      run: dotnet restore BeatWatch_BackEnd.Tests/BeatWatch_BackEnd.Tests.csproj
 
     - name: Dependency Vulnerability Audit
-      run: dotnet list BeatWatch_BackEnd/BeatWatch_BackEnd.csproj package --vulnerable --include-transitive --severity high
+      shell: bash
+      run: |
+        audit="$(dotnet list BeatWatch_BackEnd/BeatWatch_BackEnd.csproj package --vulnerable --include-transitive --format json)"
+        if jq -e '[.. | objects | select(has("vulnerabilities")) | .vulnerabilities[]?] | length > 0' <<< "$audit"; then
+          echo "Se detectaron dependencias vulnerables."
+          exit 1
+        fi
 
     - name: Configuration scan
       uses: aquasecurity/trivy-action@v0.36.0
@@ -51,6 +67,8 @@ jobs:
 
     - name: Run tests
       run: dotnet test BeatWatch_BackEnd.Tests/BeatWatch_BackEnd.Tests.csproj --configuration Release --no-restore
+      env:
+        TEST_MONGODB_CONNECTION_STRING: mongodb://127.0.0.1:27017
 
   deployment-smoke-test:
     name: Container Deployment Smoke Test
@@ -64,6 +82,15 @@ jobs:
 
     - name: Build and start production container
       run: docker compose -f docker-compose.ci.yml up --build --wait
+
+    - name: Scan container image
+      uses: aquasecurity/trivy-action@v0.36.0
+      with:
+        image-ref: beatwatch-ci-api:latest
+        format: table
+        severity: HIGH,CRITICAL
+        exit-code: "1"
+        ignore-unfixed: true
 
     - name: Verify health endpoint
       run: |

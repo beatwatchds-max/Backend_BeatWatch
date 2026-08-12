@@ -52,6 +52,14 @@ namespace BeatWatch_BackEnd.Services
                     cancellationToken: cancellationToken);
                 _logger.LogInformation("Unique index created/verified on Dispositivos (NumeroSerie).");
 
+                // Pairing sessions are valid for minutes; remove plaintext legacy secrets once expired.
+                var sesionesExpiradas = Builders<SesionEmparejamiento>.Filter.Lt(s => s.FechaExpiracion, DateTime.UtcNow);
+                var limpiarSecretos = Builders<SesionEmparejamiento>.Update
+                    .Unset(s => s.WatchSecret)
+                    .Unset(s => s.AccessToken)
+                    .Unset(s => s.RefreshToken);
+                await _context.SesionesEmparejamiento.UpdateManyAsync(sesionesExpiradas, limpiarSecretos, cancellationToken: cancellationToken);
+
                 _logger.LogInformation("MongoDB collections and unique indexes initialized successfully.");
             }
             catch (Exception ex)
