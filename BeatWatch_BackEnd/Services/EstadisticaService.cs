@@ -48,14 +48,14 @@ namespace BeatWatch_BackEnd.Services
             return await pipeline.ToListAsync();
         }
 
-        public async Task<List<EstadisticaDiaria>> ObtenerEstadisticasPorPacienteAsync(string idPaciente,DateTime? fechaInicio = null, DateTime? fechaFin = null)
+        public async Task<List<EstadisticaDiarias>> ObtenerEstadisticasPorPacienteAsync(string idPaciente,DateTime? fechaInicio = null, DateTime? fechaFin = null)
         {
             if (string.IsNullOrWhiteSpace(idPaciente))
             {
                 throw new ArgumentException("El ID del paciente es obligatorio.");
             }
 
-            var builder = Builders<EstadisticaDiaria>.Filter;
+            var builder = Builders<EstadisticaDiarias>.Filter;
             var filtro = builder.Eq(e => e.IdPaciente, idPaciente);
 
             // 🟢 Si se envían fechas, aplicamos el rango
@@ -86,7 +86,7 @@ namespace BeatWatch_BackEnd.Services
                 .SortByDescending(e => e.Fecha)
                 .FirstOrDefaultAsync();
 
-            return ultimaEstadistica != null ? new List<EstadisticaDiaria> { ultimaEstadistica } : new List<EstadisticaDiaria>();
+            return ultimaEstadistica != null ? new List<EstadisticaDiarias> { ultimaEstadistica } : new List<EstadisticaDiarias>();
         }
         #endregion
 
@@ -98,7 +98,7 @@ namespace BeatWatch_BackEnd.Services
                 throw new ArgumentException("El ID del paciente es obligatorio.");
             }
 
-            var builder = Builders<EstadisticaDiaria>.Filter;
+            var builder = Builders<EstadisticaDiarias>.Filter;
             var filtro = builder.Eq(e => e.IdPaciente, idPaciente);
 
             // Definir el rango de fechas
@@ -144,7 +144,7 @@ namespace BeatWatch_BackEnd.Services
                 throw new ArgumentException("El ID del paciente es obligatorio.");
             }
 
-            var builder = Builders<EstadisticaDiaria>.Filter;
+            var builder = Builders<EstadisticaDiarias>.Filter;
             var filtro = builder.Eq(e => e.IdPaciente, idPaciente);
 
             // Definición de rango de fechas
@@ -190,7 +190,7 @@ namespace BeatWatch_BackEnd.Services
                 throw new ArgumentException("El ID del paciente es obligatorio.");
             }
 
-            var builder = Builders<EstadisticaDiaria>.Filter;
+            var builder = Builders<EstadisticaDiarias>.Filter;
             var filtro = builder.Eq(e => e.IdPaciente, idPaciente);
 
             // Si no se especifican fechas, toma por defecto el último mes (30 días)
@@ -253,7 +253,7 @@ namespace BeatWatch_BackEnd.Services
                 throw new ArgumentException("El ID del paciente es obligatorio.");
             }
 
-            var builder = Builders<EstadisticaDiaria>.Filter;
+            var builder = Builders<EstadisticaDiarias>.Filter;
             var filtro = builder.Eq(e => e.IdPaciente, idPaciente);
 
             // Rango de fechas (últimos 30 días por defecto)
@@ -345,7 +345,7 @@ namespace BeatWatch_BackEnd.Services
                 throw new ArgumentException("El ID del paciente es obligatorio.");
             }
 
-            var builder = Builders<EstadisticaDiaria>.Filter;
+            var builder = Builders<EstadisticaDiarias>.Filter;
             var filtro = builder.Eq(e => e.IdPaciente, idPaciente);
 
             string etiquetaPeriodo;
