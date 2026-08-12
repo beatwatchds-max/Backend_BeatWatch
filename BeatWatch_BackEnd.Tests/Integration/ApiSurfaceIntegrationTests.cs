@@ -16,10 +16,10 @@ public sealed class ApiSurfaceIntegrationTests : IClassFixture<BeatWatchApiFacto
     public async Task PublicAndProtectedReadEndpoints_ReturnExpectedStatuses()
     {
         var usuarios = await _client.GetAsync("/api/usuarios?page=0&pageSize=101");
-        var weather = await _client.GetAsync("/WeatherForecast");
+        var health = await _client.GetAsync("/health");
 
         Assert.Equal(HttpStatusCode.Unauthorized, usuarios.StatusCode);
-        Assert.Equal(HttpStatusCode.OK, weather.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, health.StatusCode);
     }
 
     [MongoIntegrationFact]
@@ -80,17 +80,12 @@ public sealed class ApiSurfaceIntegrationTests : IClassFixture<BeatWatchApiFacto
     }
 
     [MongoIntegrationFact]
-    public async Task PaymentAndReportEndpoints_RejectAnonymousRequests()
+    public async Task LicenseActivationAndReportEndpoints_RejectAnonymousRequests()
     {
-        var payment = await _client.PostAsJsonAsync("/api/licencias/procesar-pago", new
-        {
-            usuarioId = "65f1a2b3c4d5e6f7a8b9c0d1",
-            tipoLicencia = "invalid",
-            metodoPago = "OXXO"
-        });
+        var activation = await _client.PostAsync("/api/licencias/activar-gratuita", null);
         var report = await _client.GetAsync("/api/reportes/descargar/recibo/65f1a2b3c4d5e6f7a8b9c0d1");
 
-        Assert.Equal(HttpStatusCode.Unauthorized, payment.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, activation.StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, report.StatusCode);
     }
 
@@ -109,16 +104,4 @@ public sealed class ApiSurfaceIntegrationTests : IClassFixture<BeatWatchApiFacto
         Assert.Equal(HttpStatusCode.BadRequest, mobileLogin.StatusCode);
     }
 
-    [MongoIntegrationFact]
-    public async Task OxxoPayment_RejectsAnonymousRequests()
-    {
-        var payment = await _client.PostAsJsonAsync("/api/licencias/procesar-pago", new
-        {
-            usuarioId = "65f1a2b3c4d5e6f7a8b9c0d1",
-            tipoLicencia = "Individual",
-            metodoPago = "OXXO",
-            correoElectronico = "payment@beatwatch.test"
-        });
-        Assert.Equal(HttpStatusCode.Unauthorized, payment.StatusCode);
-    }
 }

@@ -34,18 +34,4 @@ namespace BeatWatch_BackEnd.Models
         public string MetodoPago { get; set; } = null!; // 'Tarjeta', 'PayPal', 'OXXO'
         public string EstadoPago { get; set; } = null!; // 'Aprobado' o 'Pendiente'
     }
-
-    public class PagoSimuladoDto
-    {
-        public string UsuarioId { get; set; } = null!;
-        public string TipoLicencia { get; set; } = null!; // 'Individual', 'Grupal'
-        public string MetodoPago { get; set; } = null!; // 'Tarjeta', 'PayPal', 'OXXO'
-        public string CorreoElectronico { get; set; } = null!;
-
-        // Datos simulados de tarjeta (opcionales para la simulación básica)
-        public string? FechaExpiracion { get; set; } // Nuevo: Recibe el "MM/AA"
-        public string? Cvv { get; set; }
-        public string? NumeroTarjeta { get; set; }
-        public string? NombreTitular { get; set; }
-    }
 }

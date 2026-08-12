@@ -5,4 +5,5 @@ namespace BeatWatch_BackEnd.infrescture;
 public interface IPacienteAccessService
 {
     Task<bool> PuedeAccederAsync(ClaimsPrincipal usuario, string idPaciente);
+    Task<bool> PuedeAccederADispositivoAsync(ClaimsPrincipal usuario, string idDispositivo);
 }

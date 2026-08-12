@@ -1,6 +1,7 @@
 ﻿using BeatWatch_BackEnd.Controllers;
 using BeatWatch_BackEnd.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http;
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -21,6 +22,11 @@ namespace BeatWatch_Back_End.Tests.Controllers // ◄ Ubicado correctamente en t
 
             // Inyectamos el mock al controlador real
             _controller = new ReportesController(_mockReporteService.Object);
+            _controller.ControllerContext.HttpContext = new DefaultHttpContext
+            {
+                User = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity(
+                    [new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, "65f1a2b3c4d5e6f7a8b9c0d1")]))
+            };
         }
 
         [Fact]
@@ -32,6 +38,7 @@ namespace BeatWatch_Back_End.Tests.Controllers // ◄ Ubicado correctamente en t
 
             _mockReporteService.Setup(s => s.GenerarPdfReciboAsync(licenciaId))
                 .ReturnsAsync(pdfFalsoBytes);
+            _mockReporteService.Setup(s => s.UsuarioPuedeDescargarReciboAsync(licenciaId, It.IsAny<string>(), false)).ReturnsAsync(true);
 
             // Act
             var response = await _controller.DescargarRecibo(licenciaId);
@@ -56,6 +63,7 @@ namespace BeatWatch_Back_End.Tests.Controllers // ◄ Ubicado correctamente en t
             // Forzamos al servicio simulado a lanzar la excepción exacta que atrapa tu catch
             _mockReporteService.Setup(s => s.GenerarPdfReciboAsync(licenciaIdInexistente))
                 .ThrowsAsync(new KeyNotFoundException("La licencia especificada no existe."));
+            _mockReporteService.Setup(s => s.UsuarioPuedeDescargarReciboAsync(licenciaIdInexistente, It.IsAny<string>(), false)).ReturnsAsync(true);
 
             // Act
             var response = await _controller.DescargarRecibo(licenciaIdInexistente);
@@ -72,11 +80,22 @@ namespace BeatWatch_Back_End.Tests.Controllers // ◄ Ubicado correctamente en t
             const string licenciaId = "65f1a2b3c4d5e6f7a8b9c0d1";
             _mockReporteService.Setup(s => s.GenerarPdfReciboAsync(licenciaId))
                 .ThrowsAsync(new InvalidOperationException("pdf engine failed"));
+            _mockReporteService.Setup(s => s.UsuarioPuedeDescargarReciboAsync(licenciaId, It.IsAny<string>(), false)).ReturnsAsync(true);
 
             var response = await _controller.DescargarRecibo(licenciaId);
 
             var result = Assert.IsType<ObjectResult>(response);
             Assert.Equal(500, result.StatusCode);
+        }
+
+        [Fact]
+        public async Task DescargarRecibo_UsuarioSinAcceso_NoGeneraElPdf()
+        {
+            const string licenciaId = "65f1a2b3c4d5e6f7a8b9c0d1";
+            _mockReporteService.Setup(s => s.UsuarioPuedeDescargarReciboAsync(licenciaId, It.IsAny<string>(), false)).ReturnsAsync(false);
+
+            Assert.IsType<NotFoundResult>(await _controller.DescargarRecibo(licenciaId));
+            _mockReporteService.Verify(s => s.GenerarPdfReciboAsync(It.IsAny<string>()), Times.Never);
         }
     }
 }

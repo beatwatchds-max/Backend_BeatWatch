@@ -1,97 +1,56 @@
-﻿using BeatWatch_BackEnd.Controllers;
+using System.Security.Claims;
+using BeatWatch_BackEnd.Controllers;
 using BeatWatch_BackEnd.Models;
 using BeatWatch_BackEnd.Services;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
-using System;
-using System.Threading.Tasks;
-using Xunit;
 
-namespace BeatWatch_Back_End.Tests.Controllers
+namespace BeatWatch_Back_End.Tests.Controllers;
+
+public class LicenciasControllerTests
 {
-    public class LicenciasControllerTests
+    private const string UsuarioId = "65f1a2b3c4d5e6f7a8b9c0d1";
+    private readonly Mock<ILicenciaService> _service = new();
+
+    [Fact]
+    public async Task ActivarLicenciaGratuita_UsaLaIdentidadAutenticada()
     {
-        private readonly Mock<ILicenciaService> _mockLicenciaService;
-        private readonly LicenciasController _controller;
+        _service.Setup(s => s.ActivarLicenciaGratuitaAsync(UsuarioId)).ReturnsAsync(new Licencia { UsuarioId = UsuarioId });
 
-        public LicenciasControllerTests()
+        var response = await CrearController(UsuarioId).ActivarLicenciaGratuita();
+
+        Assert.IsType<OkObjectResult>(response);
+        _service.Verify(s => s.ActivarLicenciaGratuitaAsync(UsuarioId), Times.Once);
+    }
+
+    [Fact]
+    public async Task ActivarLicenciaGratuita_RechazaSesionSinIdentidad()
+    {
+        var controller = new LicenciasController(_service.Object)
         {
-            _mockLicenciaService = new Mock<ILicenciaService>();
-            _controller = new LicenciasController(_mockLicenciaService.Object);
-        }
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
+        };
 
-        [Fact]
-        public async Task ProcesarPagoSimulado_PagoExitoso_Retorna200OkConLicencia()
+        Assert.IsType<UnauthorizedResult>(await controller.ActivarLicenciaGratuita());
+        _service.Verify(s => s.ActivarLicenciaGratuitaAsync(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ActivarLicenciaGratuita_LicenciaExistente_Retorna409()
+    {
+        _service.Setup(s => s.ActivarLicenciaGratuitaAsync(UsuarioId)).ThrowsAsync(new InvalidOperationException());
+
+        Assert.IsType<ConflictObjectResult>(await CrearController(UsuarioId).ActivarLicenciaGratuita());
+    }
+
+    private LicenciasController CrearController(string usuarioId)
+    {
+        var controller = new LicenciasController(_service.Object);
+        controller.ControllerContext.HttpContext = new DefaultHttpContext
         {
-            // Arrange
-            var dto = new PagoSimuladoDto
-            {
-                UsuarioId = "65f1a2b3c4d5e6f7a8b9c0d1",
-                TipoLicencia = "Grupal",
-                MetodoPago = "Tarjeta",
-                CorreoElectronico = "tobi@test.com"
-            };
-
-            var licenciaCreada = new Licencia
-            {
-                Id = "6a5716986f71b40415aa13d3",
-                UsuarioId = dto.UsuarioId,
-                Tipo = dto.TipoLicencia,
-                MetodoPago = dto.MetodoPago,
-                EstadoPago = "Aprobado",
-                Activa = true
-            };
-
-            _mockLicenciaService.Setup(s => s.ProcesarPagoYCrearLicenciaAsync(dto))
-                .ReturnsAsync(licenciaCreada);
-
-            // Act
-            var response = await _controller.ProcesarPagoSimulado(dto);
-
-            // Assert
-            var actionResult = Assert.IsType<OkObjectResult>(response);
-            Assert.Equal(200, actionResult.StatusCode);
-        }
-
-        [Fact]
-        public async Task ProcesarPagoSimulado_TipoInvalido_Retorna400BadRequest()
-        {
-            // Arrange
-            var dto = new PagoSimuladoDto { TipoLicencia = "Invalida", MetodoPago = "OXXO" };
-
-            _mockLicenciaService.Setup(s => s.ProcesarPagoYCrearLicenciaAsync(dto))
-                .ThrowsAsync(new ArgumentException("Tipo de licencia no soportado."));
-
-            // Act
-            var response = await _controller.ProcesarPagoSimulado(dto);
-
-            // Assert
-            var actionResult = Assert.IsType<BadRequestObjectResult>(response);
-            Assert.Equal(400, actionResult.StatusCode);
-        }
-
-        [Fact]
-        public async Task ProcesarPagoSimulado_ServicioRetornaNull_Retorna400BadRequest()
-        {
-            var dto = new PagoSimuladoDto { TipoLicencia = "Individual", MetodoPago = "OXXO" };
-            _mockLicenciaService.Setup(s => s.ProcesarPagoYCrearLicenciaAsync(dto)).ReturnsAsync((Licencia?)null);
-
-            var response = await _controller.ProcesarPagoSimulado(dto);
-
-            Assert.IsType<BadRequestObjectResult>(response);
-        }
-
-        [Fact]
-        public async Task ProcesarPagoSimulado_ErrorInesperado_Retorna500()
-        {
-            var dto = new PagoSimuladoDto { TipoLicencia = "Individual", MetodoPago = "OXXO" };
-            _mockLicenciaService.Setup(s => s.ProcesarPagoYCrearLicenciaAsync(dto))
-                .ThrowsAsync(new InvalidOperationException("database unavailable"));
-
-            var response = await _controller.ProcesarPagoSimulado(dto);
-
-            Assert.IsType<ObjectResult>(response);
-            Assert.Equal(500, ((ObjectResult)response).StatusCode);
-        }
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, usuarioId)]))
+        };
+        return controller;
     }
 }

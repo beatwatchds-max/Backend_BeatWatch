@@ -7,8 +7,9 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:8080
+      DataProtection__KeysPath: /keys
     ports:
-      - "${API_PORT:-8080}:8080"
+      - "127.0.0.1:${API_PORT:-8080}:8080"
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -16,5 +17,10 @@ services:
     read_only: true
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=64m
+    volumes:
+      - data-protection-keys:/keys
     pids_limit: 200
     mem_limit: 512m
+
+volumes:
+  data-protection-keys:

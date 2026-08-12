@@ -1,7 +1,8 @@
-﻿using BeatWatch_BackEnd.Dtos.licencia;
-using BeatWatch_BackEnd.Services;
+﻿using BeatWatch_BackEnd.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Security.Claims;
 
 namespace BeatWatch_BackEnd.Controllers
 {
@@ -16,13 +17,16 @@ namespace BeatWatch_BackEnd.Controllers
             _licenciaService = licenciaService;
         }
 
-        [HttpPost("procesar-pago")]
-        [AllowAnonymous] // 🟢 Omitir bloqueo 401 si se permite activar sin JWT
-        public async Task<IActionResult> ProcesarPagoSimulado([FromBody] ActivarLicenciaGratuitaDto dto)
+        [HttpPost("activar-gratuita")]
+        [Authorize]
+        [EnableRateLimiting("license-activation")]
+        public async Task<IActionResult> ActivarLicenciaGratuita()
         {
             try
             {
-                var resultado = await _licenciaService.ProcesarPagoYCrearLicenciaAsync(dto);
+                var usuarioId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
+                if (string.IsNullOrWhiteSpace(usuarioId)) return Unauthorized();
+                var resultado = await _licenciaService.ActivarLicenciaGratuitaAsync(usuarioId);
 
                 if (resultado == null)
                 {
@@ -38,6 +42,10 @@ namespace BeatWatch_BackEnd.Controllers
             catch (ArgumentException ex)
             {
                 return BadRequest(new { mensaje = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(new { mensaje = ex.Message });
             }
             catch (Exception ex)
             {

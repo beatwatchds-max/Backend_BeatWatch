@@ -2,6 +2,7 @@ using BeatWatch_BackEnd.Controllers;
 using BeatWatch_BackEnd.Dtos.dispositivos;
 using BeatWatch_BackEnd.infrescture;
 using BeatWatch_BackEnd.Models;
+using BeatWatch_BackEnd.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
@@ -12,6 +13,8 @@ public class DispositivosControllerTests
 {
     private readonly Mock<IDispositivoService> _service = new();
     private readonly Mock<IPacienteAccessService> _accessService = new();
+    private readonly Mock<IMedicionService> _medicionService = new();
+    private readonly Mock<IAlertaService> _alertaService = new();
 
     [Fact]
     public async Task Emparejar_SolicitudValida_Retorna201()
@@ -108,10 +111,34 @@ public class DispositivosControllerTests
         Assert.IsType<NotFoundObjectResult>(await CrearController().EliminarDispositivo(id));
     }
 
+    [Fact]
+    public async Task RegistrarMedicion_SinAccesoAlDispositivo_Retorna403()
+    {
+        _accessService.Setup(s => s.PuedeAccederADispositivoAsync(It.IsAny<System.Security.Claims.ClaimsPrincipal>(), "ajeno")).ReturnsAsync(false);
+
+        Assert.IsType<ForbidResult>(await CrearController().RegistrarMedicion("ajeno", new RegistrarMedicionDto()));
+        _medicionService.Verify(s => s.RegistrarMedicionAsync(It.IsAny<string>(), It.IsAny<RegistrarMedicionDto>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task RegistrarAlerta_SinAccesoAlDispositivo_Retorna403()
+    {
+        _accessService.Setup(s => s.PuedeAccederADispositivoAsync(It.IsAny<System.Security.Claims.ClaimsPrincipal>(), "ajeno")).ReturnsAsync(false);
+
+        Assert.IsType<ForbidResult>(await CrearController().RegistrarAlerta("ajeno", new CrearAlertaDto()));
+        _alertaService.Verify(s => s.RegistrarAlertaAsync(It.IsAny<string>(), It.IsAny<CrearAlertaDto>()), Times.Never);
+    }
+
     private DispositivosController CrearController()
     {
         _accessService.Setup(s => s.PuedeAccederAsync(It.IsAny<System.Security.Claims.ClaimsPrincipal>(), It.IsAny<string>())).ReturnsAsync(true);
-        return new(_service.Object, _accessService.Object);
+        var controller = new DispositivosController(_service.Object, _accessService.Object, _medicionService.Object, _alertaService.Object);
+        controller.ControllerContext.HttpContext = new DefaultHttpContext
+        {
+            User = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity(
+                [new System.Security.Claims.Claim("idLicencia", "65f1a2b3c4d5e6f7a8b9c0d1")], "test"))
+        };
+        return controller;
     }
 
     private void PrepararDispositivo(string id) => _service.Setup(s => s.ObtenerDispositivoAsync(id))

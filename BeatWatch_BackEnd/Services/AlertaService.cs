@@ -71,12 +71,12 @@ namespace BeatWatch_BackEnd.Services
             try
             {
                 // Aquí va la llamada a Firebase Messaging (FCM) hacia los tokens registrados de los cuidadores/paciente
-                _logger.LogInformation("Notificación Push [FCM] enviada para el paciente {IdPaciente}: [{Tipo}] {Mensaje}", idPaciente, tipo, mensaje);
+                _logger.LogInformation("Notificación Push [FCM] enviada para una alerta de dispositivo.");
                 await Task.CompletedTask;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error al enviar la notificación Push para la alerta del paciente {IdPaciente}", idPaciente);
+                _logger.LogError(ex, "Error al enviar la notificación Push para una alerta de dispositivo.");
             }
         }
     }

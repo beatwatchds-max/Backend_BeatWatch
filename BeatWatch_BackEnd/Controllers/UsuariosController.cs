@@ -54,7 +54,9 @@ namespace BeatWatch_BackEnd.Controllers
         {
             try
             {
-                var actualizado = await _usuarioService.DesactivarAsync(id, cancellationToken);
+                var idLicencia = ObtenerIdLicencia();
+                if (idLicencia is null) return Forbid();
+                var actualizado = await _usuarioService.DesactivarAsync(id, idLicencia, cancellationToken);
                 return actualizado
                     ? NoContent()
                     : NotFound(new { mensaje = "Usuario no encontrado." });
@@ -71,7 +73,9 @@ namespace BeatWatch_BackEnd.Controllers
         {
             try
             {
-                var actualizado = await _usuarioService.ActualizarCuidadoresAsync(id, request.Cuidadores, cancellationToken);
+                var idLicencia = ObtenerIdLicencia();
+                if (idLicencia is null) return Forbid();
+                var actualizado = await _usuarioService.ActualizarCuidadoresAsync(id, request.Cuidadores, idLicencia, cancellationToken);
                 return actualizado
                     ? NoContent()
                     : NotFound(new { mensaje = "Usuario no encontrado." });
@@ -88,7 +92,9 @@ namespace BeatWatch_BackEnd.Controllers
         {
             try
             {
-                var actualizado = await _usuarioService.DesvincularCuidadorAsync(id, cuidadorId, cancellationToken);
+                var idLicencia = ObtenerIdLicencia();
+                if (idLicencia is null) return Forbid();
+                var actualizado = await _usuarioService.DesvincularCuidadorAsync(id, cuidadorId, idLicencia, cancellationToken);
                 return actualizado
                     ? NoContent()
                     : NotFound(new { mensaje = "Usuario no encontrado." });
@@ -98,6 +104,8 @@ namespace BeatWatch_BackEnd.Controllers
                 return BadRequest(new { mensaje = ex.Message });
             }
         }
+
+        private string? ObtenerIdLicencia() => User.FindFirst("idLicencia")?.Value ?? User.FindFirst("LicenciaId")?.Value;
 
         [HttpPost("registrar-cuidador")]
         [Authorize(Roles = "Administrador")] // 🔒 Requiere token del Admin logueado

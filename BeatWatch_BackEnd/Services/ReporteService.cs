@@ -127,5 +127,13 @@ namespace BeatWatch_BackEnd.Services
                 return memoryStream.ToArray();
             }
         }
+
+        public async Task<bool> UsuarioPuedeDescargarReciboAsync(string licenciaId, string usuarioId, bool esAdministrador)
+        {
+            var filtro = esAdministrador
+                ? Builders<Licencia>.Filter.Eq(l => l.Id, licenciaId)
+                : Builders<Licencia>.Filter.Eq(l => l.Id, licenciaId) & Builders<Licencia>.Filter.Eq(l => l.UsuarioId, usuarioId);
+            return await _context.Licencias.Find(filtro).AnyAsync();
+        }
     }
 }

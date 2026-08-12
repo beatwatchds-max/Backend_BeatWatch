@@ -9,6 +9,11 @@ using Microsoft.OpenApi;
 using Microsoft.OpenApi.Models;
 using System.Text;
 using System.Threading.RateLimiting;
+using System.Security.Claims;
+using System.IdentityModel.Tokens.Jwt;
+using MongoDB.Driver;
+using System.IO;
+using Microsoft.AspNetCore.DataProtection;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddEnvironmentVariables();
@@ -71,6 +76,26 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateLifetime = true,
             ClockSkew = TimeSpan.Zero
         };
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async context =>
+            {
+                // Only mobile tokens participate in the one-device session policy.
+                if (context.Principal?.FindFirst("tipoSesion")?.Value != "movil") return;
+
+                var usuarioId = context.Principal.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? context.Principal.FindFirst("sub")?.Value;
+                var sesionId = context.Principal.FindFirst(JwtRegisteredClaimNames.Jti)?.Value;
+                if (string.IsNullOrWhiteSpace(usuarioId) || string.IsNullOrWhiteSpace(sesionId))
+                {
+                    context.Fail("El token no contiene una sesión móvil válida.");
+                    return;
+                }
+
+                var db = context.HttpContext.RequestServices.GetRequiredService<MongoDbContext>();
+                var usuario = await db.Usuarios.Find(u => u.Id == usuarioId && u.SesionActiva && u.UltimaSesionId == sesionId).FirstOrDefaultAsync();
+                if (usuario is null) context.Fail("La sesión ha sido cerrada o revocada.");
+            }
+        };
     });
 
 builder.Services.AddAuthorizationBuilder()
@@ -101,11 +126,22 @@ builder.Services.AddRateLimiter(options =>
     options.AddPolicy("device-pairing", context =>
         RateLimitPartition.GetFixedWindowLimiter(
             context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-            _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+             _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+
+    options.AddPolicy("license-activation", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions { PermitLimit = 2, Window = TimeSpan.FromHours(1), QueueLimit = 0 }));
 });
 
 // --- INYECCIÓN DE DEPENDENCIAS ---
 builder.Services.AddSingleton<MongoDbContext>();
+var dataProtection = builder.Services.AddDataProtection().SetApplicationName("BeatWatch");
+var dataProtectionKeysPath = builder.Configuration["DataProtection:KeysPath"];
+if (!string.IsNullOrWhiteSpace(dataProtectionKeysPath))
+{
+    dataProtection.PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysPath));
+}
 builder.Services.AddScoped<IUsuarioService, UsuarioService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddHttpClient<ICaptchaVerifier, RecaptchaVerifier>(client => client.BaseAddress = new Uri("https://www.google.com/"));

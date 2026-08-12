@@ -8,6 +8,7 @@ services:
       retries: 12
 
   api:
+    image: beatwatch-ci-api:latest
     build:
       context: .
       dockerfile: BeatWatch_BackEnd/Dockerfile

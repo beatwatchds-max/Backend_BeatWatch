@@ -1,5 +1,6 @@
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
+using System.Text.Json.Serialization;
 
 namespace BeatWatch_BackEnd.Models
 {
@@ -19,12 +20,15 @@ namespace BeatWatch_BackEnd.Models
         public string Telefono { get; set; } = null!;
 
         [BsonElement("Contrasena")]
+        [JsonIgnore]
         public string Contrasena { get; set; } = null!;
 
         [BsonElement("RestablecimientoContrasenaTokenHash")]
+        [JsonIgnore]
         public string? RestablecimientoContrasenaTokenHash { get; set; }
 
         [BsonElement("RestablecimientoContrasenaExpiraEn")]
+        [JsonIgnore]
         public DateTime? RestablecimientoContrasenaExpiraEn { get; set; }
 
         [BsonElement("Activo")]
@@ -33,6 +37,7 @@ namespace BeatWatch_BackEnd.Models
         [BsonElement("Cuidadores")]
         [BsonRepresentation(BsonType.ObjectId)]
         public List<string> Cuidadores { get; set; } = new();
+        [JsonIgnore]
         public string? TokenMovil { get; set; }
         [BsonElement("Rol")]
         public string Rol { get; set; } = "Paciente";
@@ -47,9 +52,11 @@ namespace BeatWatch_BackEnd.Models
 
 
         [BsonElement("SesionActiva")]
+        [JsonIgnore]
         public bool SesionActiva { get; set; } = false;
 
         [BsonElement("UltimaSesionId")]
+        [JsonIgnore]
         public string? UltimaSesionId { get; set; }
 
         [BsonElement("UltimoAcceso")]

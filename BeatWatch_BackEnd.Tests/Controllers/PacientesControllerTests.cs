@@ -13,6 +13,7 @@ public class PacientesControllerTests
 {
     private readonly Mock<IPacienteService> _service = new();
     private readonly Mock<IPacienteAccessService> _accessService = new();
+    private readonly Mock<IMedicionService> _medicionService = new();
 
     [Fact]
     public async Task RegistrarPaciente_SolicitudValida_Retorna200()
@@ -64,7 +65,7 @@ public class PacientesControllerTests
     private PacientesController CrearController()
     {
         _accessService.Setup(s => s.PuedeAccederAsync(It.IsAny<ClaimsPrincipal>(), It.IsAny<string>())).ReturnsAsync(true);
-        var controller = new PacientesController(_service.Object, _accessService.Object);
+        var controller = new PacientesController(_service.Object, _accessService.Object, _medicionService.Object);
         controller.ControllerContext.HttpContext = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(

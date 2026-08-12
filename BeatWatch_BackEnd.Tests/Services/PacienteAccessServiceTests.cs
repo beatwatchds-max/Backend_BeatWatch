@@ -9,10 +9,8 @@ namespace BeatWatch_BackEnd.Tests.Services;
 
 public class PacienteAccessServiceTests
 {
-    [Theory]
-    [InlineData("Administrador")]
-    [InlineData("Cuidador")]
-    public async Task PuedeAccederAsync_PersonalDeLaMismaLicencia_PermiteAccesoAlPaciente(string rol)
+    [Fact]
+    public async Task PuedeAccederAsync_AdministradorDeLaMismaLicencia_PermiteAccesoAlPaciente()
     {
         const string idPaciente = "65f1a2b3c4d5e6f7a8b9c0d1";
         const string idLicencia = "65f1a2b3c4d5e6f7a8b9c0d2";
@@ -35,7 +33,7 @@ public class PacienteAccessServiceTests
         var usuario = new ClaimsPrincipal(new ClaimsIdentity(
         [
             new Claim(ClaimTypes.NameIdentifier, "65f1a2b3c4d5e6f7a8b9c0d4"),
-            new Claim(ClaimTypes.Role, rol),
+            new Claim(ClaimTypes.Role, "Administrador"),
             new Claim("idLicencia", idLicencia)
         ], "test"));
 

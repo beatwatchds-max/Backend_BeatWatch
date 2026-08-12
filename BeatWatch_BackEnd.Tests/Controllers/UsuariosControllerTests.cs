@@ -2,6 +2,7 @@ using BeatWatch_BackEnd.Controllers;
 using BeatWatch_BackEnd.Dtos;
 using BeatWatch_BackEnd.infrescture;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http;
 using Moq;
 using Xunit;
 
@@ -9,15 +10,16 @@ namespace BeatWatch_BackEnd.Tests.Controllers;
 
 public class UsuariosControllerTests
 {
+    private const string LicenciaId = "65f1a2b3c4d5e6f7a8b9c0d9";
     private readonly Mock<IUsuarioService> _usuarioService = new();
 
     [Fact]
     public async Task BorradoLogico_UsuarioExistente_Retorna204()
     {
         const string usuarioId = "65f1a2b3c4d5e6f7a8b9c0d1";
-        _usuarioService.Setup(s => s.DesactivarAsync(usuarioId, It.IsAny<CancellationToken>()))
+        _usuarioService.Setup(s => s.DesactivarAsync(usuarioId, LicenciaId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
-        var controller = new UsuariosController(_usuarioService.Object);
+        var controller = CrearController();
 
         var resultado = await controller.BorradoLogico(usuarioId, CancellationToken.None);
 
@@ -28,9 +30,9 @@ public class UsuariosControllerTests
     public async Task BorradoLogico_UsuarioInexistente_Retorna404()
     {
         const string usuarioId = "65f1a2b3c4d5e6f7a8b9c0d1";
-        _usuarioService.Setup(s => s.DesactivarAsync(usuarioId, It.IsAny<CancellationToken>()))
+        _usuarioService.Setup(s => s.DesactivarAsync(usuarioId, LicenciaId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
-        var controller = new UsuariosController(_usuarioService.Object);
+        var controller = CrearController();
 
         var resultado = await controller.BorradoLogico(usuarioId, CancellationToken.None);
 
@@ -45,9 +47,9 @@ public class UsuariosControllerTests
         {
             Cuidadores = ["65f1a2b3c4d5e6f7a8b9c0d2"]
         };
-        _usuarioService.Setup(s => s.ActualizarCuidadoresAsync(usuarioId, request.Cuidadores, It.IsAny<CancellationToken>()))
+        _usuarioService.Setup(s => s.ActualizarCuidadoresAsync(usuarioId, request.Cuidadores, LicenciaId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
-        var controller = new UsuariosController(_usuarioService.Object);
+        var controller = CrearController();
 
         var resultado = await controller.ActualizarCuidadores(usuarioId, request, CancellationToken.None);
 
@@ -59,9 +61,9 @@ public class UsuariosControllerTests
     {
         const string usuarioId = "65f1a2b3c4d5e6f7a8b9c0d1";
         var request = new ActualizarCuidadoresDto();
-        _usuarioService.Setup(s => s.ActualizarCuidadoresAsync(usuarioId, request.Cuidadores, It.IsAny<CancellationToken>()))
+        _usuarioService.Setup(s => s.ActualizarCuidadoresAsync(usuarioId, request.Cuidadores, LicenciaId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
-        var controller = new UsuariosController(_usuarioService.Object);
+        var controller = CrearController();
 
         var resultado = await controller.ActualizarCuidadores(usuarioId, request, CancellationToken.None);
 
@@ -72,9 +74,9 @@ public class UsuariosControllerTests
     public async Task ActualizarCuidadores_IdentificadorInvalido_Retorna400()
     {
         var request = new ActualizarCuidadoresDto();
-        _usuarioService.Setup(s => s.ActualizarCuidadoresAsync("invalido", request.Cuidadores, It.IsAny<CancellationToken>()))
+        _usuarioService.Setup(s => s.ActualizarCuidadoresAsync("invalido", request.Cuidadores, LicenciaId, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new ArgumentException("Formato inválido."));
-        var controller = new UsuariosController(_usuarioService.Object);
+        var controller = CrearController();
 
         var resultado = await controller.ActualizarCuidadores("invalido", request, CancellationToken.None);
 
@@ -86,9 +88,9 @@ public class UsuariosControllerTests
     {
         const string usuarioId = "65f1a2b3c4d5e6f7a8b9c0d1";
         const string cuidadorId = "invalido";
-        _usuarioService.Setup(s => s.DesvincularCuidadorAsync(usuarioId, cuidadorId, It.IsAny<CancellationToken>()))
+        _usuarioService.Setup(s => s.DesvincularCuidadorAsync(usuarioId, cuidadorId, LicenciaId, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new ArgumentException("El identificador no tiene un formato válido."));
-        var controller = new UsuariosController(_usuarioService.Object);
+        var controller = CrearController();
 
         var resultado = await controller.DesvincularCuidador(usuarioId, cuidadorId, CancellationToken.None);
 
@@ -100,9 +102,9 @@ public class UsuariosControllerTests
     {
         const string usuarioId = "65f1a2b3c4d5e6f7a8b9c0d1";
         const string cuidadorId = "65f1a2b3c4d5e6f7a8b9c0d2";
-        _usuarioService.Setup(s => s.DesvincularCuidadorAsync(usuarioId, cuidadorId, It.IsAny<CancellationToken>()))
+        _usuarioService.Setup(s => s.DesvincularCuidadorAsync(usuarioId, cuidadorId, LicenciaId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
-        var controller = new UsuariosController(_usuarioService.Object);
+        var controller = CrearController();
 
         var resultado = await controller.DesvincularCuidador(usuarioId, cuidadorId, CancellationToken.None);
 
@@ -112,12 +114,23 @@ public class UsuariosControllerTests
     [Fact]
     public async Task BorradoLogico_IdentificadorInvalido_Retorna400()
     {
-        _usuarioService.Setup(s => s.DesactivarAsync("invalido", It.IsAny<CancellationToken>()))
+        _usuarioService.Setup(s => s.DesactivarAsync("invalido", LicenciaId, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new ArgumentException("Formato inválido."));
-        var controller = new UsuariosController(_usuarioService.Object);
+        var controller = CrearController();
 
         var resultado = await controller.BorradoLogico("invalido", CancellationToken.None);
 
         Assert.IsType<BadRequestObjectResult>(resultado);
+    }
+
+    private UsuariosController CrearController()
+    {
+        var controller = new UsuariosController(_usuarioService.Object);
+        controller.ControllerContext.HttpContext = new DefaultHttpContext
+        {
+            User = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity(
+                [new System.Security.Claims.Claim("idLicencia", LicenciaId)]))
+        };
+        return controller;
     }
 }

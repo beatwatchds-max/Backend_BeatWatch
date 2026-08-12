@@ -180,12 +180,15 @@ namespace BeatWatch_BackEnd.Controllers
             }
         }
 
-        [Authorize]
+        [AllowAnonymous]
         [HttpPost("{idDispositivo}/mediciones")]
-        public async Task<IActionResult> RegistrarMedicion(string idDispositivo, [FromBody] RegistrarMedicionDto dto)
+        public async Task<IActionResult> RegistrarMedicion(string idDispositivo, [FromBody] RegistrarMedicionDto dto, [FromHeader(Name = "X-Watch-Access-Token")] string? watchAccessToken = null)
         {
             try
             {
+                var esDispositivoAutenticado = !string.IsNullOrWhiteSpace(watchAccessToken) && await _dispositivoService.ValidarTokenDeDispositivoAsync(idDispositivo, watchAccessToken);
+                if (!esDispositivoAutenticado && User.Identity?.IsAuthenticated != true) return Unauthorized();
+                if (!esDispositivoAutenticado && !await _pacienteAccessService.PuedeAccederADispositivoAsync(User, idDispositivo)) return Forbid();
                 var idMedicion = await _medicionService.RegistrarMedicionAsync(idDispositivo, dto);
 
                 return StatusCode(201, new
@@ -208,12 +211,15 @@ namespace BeatWatch_BackEnd.Controllers
             }
         }
         // POST /api/Dispositivos/{idDispositivo}/alertas
-        [Authorize]
+        [AllowAnonymous]
         [HttpPost("{idDispositivo}/alertas")]
-        public async Task<IActionResult> RegistrarAlerta(string idDispositivo, [FromBody] CrearAlertaDto dto)
+        public async Task<IActionResult> RegistrarAlerta(string idDispositivo, [FromBody] CrearAlertaDto dto, [FromHeader(Name = "X-Watch-Access-Token")] string? watchAccessToken = null)
         {
             try
             {
+                var esDispositivoAutenticado = !string.IsNullOrWhiteSpace(watchAccessToken) && await _dispositivoService.ValidarTokenDeDispositivoAsync(idDispositivo, watchAccessToken);
+                if (!esDispositivoAutenticado && User.Identity?.IsAuthenticated != true) return Unauthorized();
+                if (!esDispositivoAutenticado && !await _pacienteAccessService.PuedeAccederADispositivoAsync(User, idDispositivo)) return Forbid();
                 var respuesta = await _alertaService.RegistrarAlertaAsync(idDispositivo, dto);
 
                 return StatusCode(201, respuesta);
