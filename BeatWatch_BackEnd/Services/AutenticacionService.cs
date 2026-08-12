@@ -23,14 +23,32 @@ namespace BeatWatch_BackEnd.Services
             _settings = settings.Value;
         }
 
-      
+
         public async Task<LoginMovilResponseDto?> ValidarTokenYGenerarJwtAsync(string tokenMovil)
         {
+            // 1. Buscar usuario por TokenMovil
             var usuario = await _context.Usuarios
                 .Find(u => u.TokenMovil == tokenMovil && u.Activo == true)
                 .FirstOrDefaultAsync();
 
             if (usuario?.Id is not string usuarioId) return null;
+
+            // 🟢 2. Bloquear si ya hay una sesión activa en otro dispositivo
+            if (usuario.SesionActiva)
+            {
+                throw new InvalidOperationException("Ya existe una sesión activa en otro dispositivo. Cierra sesión en el dispositivo actual para ingresar.");
+            }
+
+            // 3. Generar identificador de sesión único
+            string nuevaSesionId = Guid.NewGuid().ToString();
+
+            // 🟢 4. Mantener el TokenMovil en la base de datos pero marcar la Sesión como Activa
+            var updateUsuario = Builders<Usuario>.Update
+                .Set(u => u.SesionActiva, true)
+                .Set(u => u.UltimaSesionId, nuevaSesionId)
+                .Set(u => u.UltimoAcceso, DateTime.UtcNow);
+
+            await _context.Usuarios.UpdateOneAsync(u => u.Id == usuarioId, updateUsuario);
 
             // Búsqueda de la licencia asociada
             var licencia = await _context.Licencias
@@ -78,7 +96,6 @@ namespace BeatWatch_BackEnd.Services
             {
                 if (!string.IsNullOrEmpty(idLicenciaEncontrada))
                 {
-                    // 1. Verificar si ya se registró al paciente de la licencia
                     var pacienteAsociado = await _context.Pacientes
                         .Find(p => p.IdLicencia == idLicenciaEncontrada)
                         .FirstOrDefaultAsync();
@@ -88,12 +105,10 @@ namespace BeatWatch_BackEnd.Services
 
                     if (registroPacienteCompletado)
                     {
-                        // 2. Evaluar si dicho paciente ya tiene arritmias/diagnóstico registrados
                         diagnosticoCompletado = await _context.Arritmias
                             .Find(a => a.IdPaciente == pacienteAsociado!.Id)
                             .AnyAsync();
 
-                        // 3. Evaluar si el paciente ya vinculó su dispositivo
                         dispositivoVinculado = await _context.Dispositivos
                             .Find(d => d.IdPaciente == pacienteAsociado!.Id)
                             .AnyAsync();
@@ -118,11 +133,12 @@ namespace BeatWatch_BackEnd.Services
 
             var claims = new[]
             {
-                new Claim(ClaimTypes.NameIdentifier, usuarioId),
-                new Claim(ClaimTypes.Name, usuario.Nombre),
-                new Claim(ClaimTypes.Role, usuario.Rol),
-                new Claim("idLicencia", idLicenciaEncontrada)
-            };
+        new Claim(ClaimTypes.NameIdentifier, usuarioId),
+        new Claim(ClaimTypes.Name, usuario.Nombre),
+        new Claim(ClaimTypes.Role, usuario.Rol),
+        new Claim("idLicencia", idLicenciaEncontrada),
+        new Claim(JwtRegisteredClaimNames.Jti, nuevaSesionId)
+    };
 
             var tokenObject = new JwtSecurityToken(
                 issuer: _settings.Issuer,
@@ -146,10 +162,20 @@ namespace BeatWatch_BackEnd.Services
                 PerfilCompletado = perfilCompletado,
                 DiagnosticoCompletado = diagnosticoCompletado,
                 DispositivoVinculado = dispositivoVinculado,
-                RegistroPacienteCompletado = registroPacienteCompletado, 
+                RegistroPacienteCompletado = registroPacienteCompletado,
                 PacienteId = pacienteId
             };
         }
-     
+
+
+        public async Task<bool> CerrarSesionMovilAsync(string usuarioId)
+        {
+            var updateUsuario = Builders<Usuario>.Update
+                .Set(u => u.SesionActiva, false)
+                .Set(u => u.UltimaSesionId, null);
+
+            var result = await _context.Usuarios.UpdateOneAsync(u => u.Id == usuarioId, updateUsuario);
+            return result.ModifiedCount > 0;
+        }
     }
 }

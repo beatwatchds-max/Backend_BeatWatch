@@ -44,5 +44,16 @@ namespace BeatWatch_BackEnd.Models
         [BsonElement("IdLicencia")]
         [BsonRepresentation(BsonType.ObjectId)]
         public string? IdLicencia { get; set; }
+
+
+        [BsonElement("SesionActiva")]
+        public bool SesionActiva { get; set; } = false;
+
+        [BsonElement("UltimaSesionId")]
+        public string? UltimaSesionId { get; set; }
+
+        [BsonElement("UltimoAcceso")]
+        [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
+        public DateTime? UltimoAcceso { get; set; }
     }
 }
