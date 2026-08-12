@@ -22,9 +22,10 @@ public sealed class PacienteAccessService : IPacienteAccessService
 
         var paciente = await _context.Pacientes.Find(p => p.Id == idPaciente && p.IdLicencia == licenciaId).FirstOrDefaultAsync();
         if (paciente is null) return false;
+        if (paciente.UsuarioId == usuarioId || usuario.IsInRole("Administrador")) return true;
+        if (!usuario.IsInRole("Cuidador")) return false;
 
-        return paciente.UsuarioId == usuarioId
-            || usuario.IsInRole("Administrador")
-            || usuario.IsInRole("Cuidador");
+        var cuentaPaciente = await _context.Usuarios.Find(u => u.Id == paciente.UsuarioId && u.IdLicencia == licenciaId).FirstOrDefaultAsync();
+        return cuentaPaciente?.Cuidadores.Contains(usuarioId) == true;
     }
 }
