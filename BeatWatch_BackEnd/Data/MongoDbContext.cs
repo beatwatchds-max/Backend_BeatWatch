@@ -34,7 +34,7 @@ namespace BeatWatch_BackEnd.Data
         public virtual IMongoCollection<EpisodioArritmia> EpisodiosArritmia => _database.GetCollection<EpisodioArritmia>("EpisodiosArritmia");
         public virtual IMongoCollection<ActividadDiaria> ActividadesDiarias => _database.GetCollection<ActividadDiaria>("ActividadesDiarias");
         public virtual IMongoCollection<SesionEmparejamiento> SesionesEmparejamiento => _database.GetCollection<SesionEmparejamiento>("SesionesEmparejamiento");
-        public virtual IMongoCollection<EstadisticaDiarias> EstadisticasDiarias => _database.GetCollection<EstadisticaDiarias>("EstadisticaDiarias");
+        public virtual IMongoCollection<EstadisticasDiarias> EstadisticasDiarias => _database.GetCollection<EstadisticasDiarias>("EstadisticasDiarias");
         public virtual IMongoCollection<MedicionFrecuenciaCardiaca> MedicionesFrecuenciaCardiaca => _database.GetCollection<MedicionFrecuenciaCardiaca>("MedicionesFrecuenciaCardiaca");
         public virtual IMongoCollection<AlertaDispositivo> AlertasDispositivos =>_database.GetCollection<AlertaDispositivo>("AlertasDispositivos");
 
@@ -43,7 +43,7 @@ namespace BeatWatch_BackEnd.Data
             try
             {
          
-                var indexKeys = Builders<EstadisticaDiarias>.IndexKeys
+                var indexKeys = Builders<EstadisticasDiarias>.IndexKeys
                     .Ascending(e => e.IdPaciente)
                     .Ascending(e => e.Fecha);
 
@@ -53,7 +53,7 @@ namespace BeatWatch_BackEnd.Data
                     Name = "ux_IdPaciente_Fecha"
                 };
 
-                var indexModel = new CreateIndexModel<EstadisticaDiarias>(indexKeys, indexOptions);
+                var indexModel = new CreateIndexModel<EstadisticasDiarias>(indexKeys, indexOptions);
 
             
                 EstadisticasDiarias.Indexes.CreateOne(indexModel);
