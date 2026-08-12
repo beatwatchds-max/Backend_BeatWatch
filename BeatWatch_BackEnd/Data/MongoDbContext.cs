@@ -36,6 +36,7 @@ namespace BeatWatch_BackEnd.Data
         public virtual IMongoCollection<SesionEmparejamiento> SesionesEmparejamiento => _database.GetCollection<SesionEmparejamiento>("SesionesEmparejamiento");
         public virtual IMongoCollection<EstadisticaDiaria> EstadisticasDiarias => _database.GetCollection<EstadisticaDiaria>("EstadisticaDiaria");
         public virtual IMongoCollection<MedicionFrecuenciaCardiaca> MedicionesFrecuenciaCardiaca => _database.GetCollection<MedicionFrecuenciaCardiaca>("MedicionesFrecuenciaCardiaca");
+        public virtual IMongoCollection<AlertaDispositivo> AlertasDispositivos =>_database.GetCollection<AlertaDispositivo>("AlertasDispositivos");
 
         private void CrearIndices()
         {
