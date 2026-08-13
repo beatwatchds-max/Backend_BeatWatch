@@ -14,36 +14,49 @@ namespace BeatWatch_BackEnd.Services
             _context = context;
         }
 
-        public async Task<Licencia?> ActivarLicenciaGratuitaAsync(string usuarioId)
+        public async Task<Licencia?> ActivarLicenciaGratuitaAsync(ActivarLicenciaGratuitaDto dto)
         {
-            if (!ObjectId.TryParse(usuarioId, out _)) throw new ArgumentException("El usuario autenticado no tiene un identificador válido.");
+            if (string.IsNullOrWhiteSpace(dto.CorreoElectronico) && string.IsNullOrWhiteSpace(dto.UsuarioId))
+            {
+                throw new ArgumentException("Se requiere el correo electrónico o el ID del usuario para activar la licencia.");
+            }
 
-            // The identity must come from the authenticated JWT, never from client input.
-            var usuario = await _context.Usuarios
-                .Find(u => u.Id == usuarioId)
-                .FirstOrDefaultAsync();
+            Usuario? usuario = null;
+
+            // 1. Intentar buscar por ID si se envió y es válido
+            if (!string.IsNullOrWhiteSpace(dto.UsuarioId) && ObjectId.TryParse(dto.UsuarioId, out _))
+            {
+                usuario = await _context.Usuarios.Find(u => u.Id == dto.UsuarioId).FirstOrDefaultAsync();
+            }
+
+            // 2. Si no se encontró por ID (o no se envió), buscar por Correo (Dato de la pantalla)
+            if (usuario == null && !string.IsNullOrWhiteSpace(dto.CorreoElectronico))
+            {
+                usuario = await _context.Usuarios.Find(u => u.Correo == dto.CorreoElectronico).FirstOrDefaultAsync();
+            }
 
             if (usuario == null)
             {
-                throw new ArgumentException("El usuario autenticado no existe en el sistema.");
+                throw new ArgumentException("El usuario proporcionado no existe en el sistema.");
             }
+
+            var usuarioId = usuario.Id!;
 
             if (await _context.Licencias.Find(l => l.UsuarioId == usuarioId && l.Activa && l.MetodoPago == "Gratuito").AnyAsync())
             {
                 throw new InvalidOperationException("El usuario ya tiene una licencia gratuita activa.");
             }
 
-            // 2. Generar Código de Grupo único para el Plan Grupal Gratuito
+            // Generar Código de Grupo único para el Plan Grupal Gratuito
             string codigoGrupoUnico = $"BW-GR-{Guid.NewGuid().ToString()[..8].ToUpper()}";
 
-            // 3. Vigencia por defecto de 1 año (o 1 mes según tus reglas de negocio)
             var fechaInicio = DateTime.UtcNow;
             var fechaFin = fechaInicio.AddYears(1);
 
             var nuevaLicencia = new Licencia
             {
-                UsuarioId = usuario.Id!,
-                UsuariosAsociados = new List<string> { usuario.Id! },
+                UsuarioId = usuarioId,
+                UsuariosAsociados = new List<string> { usuarioId },
                 Tipo = "Grupal",
                 CodigoGrupo = codigoGrupoUnico,
                 FechaInicio = fechaInicio,
@@ -53,11 +66,10 @@ namespace BeatWatch_BackEnd.Services
                 Activa = true
             };
 
-            // Guardar en MongoDB
             await _context.Licencias.InsertOneAsync(nuevaLicencia);
 
-            // 4. Activar el estado del Usuario y Vincular la nueva Licencia
-            var filter = Builders<Usuario>.Filter.Eq(u => u.Id, usuario.Id);
+            // Activar el estado del Usuario y Vincular la nueva Licencia
+            var filter = Builders<Usuario>.Filter.Eq(u => u.Id, usuarioId);
             var update = Builders<Usuario>.Update
                 .Set(u => u.Activo, true)
                 .Set(u => u.IdLicencia, nuevaLicencia.Id);

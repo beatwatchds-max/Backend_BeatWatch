@@ -4,6 +4,6 @@ namespace BeatWatch_BackEnd.Services
 {
     public interface ILicenciaService
     {
-        Task<Licencia?> ActivarLicenciaGratuitaAsync(string usuarioId);
+        Task<Licencia?> ActivarLicenciaGratuitaAsync(ActivarLicenciaGratuitaDto dto);
     }
 }

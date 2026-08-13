@@ -1,8 +1,8 @@
-﻿using BeatWatch_BackEnd.Services;
+﻿using BeatWatch_BackEnd.Models;
+using BeatWatch_BackEnd.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using System.Security.Claims;
 
 namespace BeatWatch_BackEnd.Controllers
 {
@@ -17,16 +17,16 @@ namespace BeatWatch_BackEnd.Controllers
             _licenciaService = licenciaService;
         }
 
-        [HttpPost("activar-gratuita")]
+        // 🟢 Regresamos la ruta a procesar-pago para que el frontend funcione
+        [HttpPost("procesar-pago")]
         [AllowAnonymous]
         [EnableRateLimiting("license-activation")]
-        public async Task<IActionResult> ActivarLicenciaGratuita()
+        public async Task<IActionResult> ActivarLicenciaGratuita([FromBody] ActivarLicenciaGratuitaDto dto)
         {
             try
             {
-                var usuarioId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
-                if (string.IsNullOrWhiteSpace(usuarioId)) return Unauthorized();
-                var resultado = await _licenciaService.ActivarLicenciaGratuitaAsync(usuarioId);
+                // 🟢 Pasamos el DTO al servicio en lugar del ID del token
+                var resultado = await _licenciaService.ActivarLicenciaGratuitaAsync(dto);
 
                 if (resultado == null)
                 {
