@@ -18,7 +18,7 @@ namespace BeatWatch_BackEnd.Controllers
         }
 
         [HttpPost("activar-gratuita")]
-        [Authorize]
+        [AllowAnonymous]
         [EnableRateLimiting("license-activation")]
         public async Task<IActionResult> ActivarLicenciaGratuita()
         {
