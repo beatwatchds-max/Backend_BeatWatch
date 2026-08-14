@@ -15,3 +15,4 @@ obj/
 !.env.example
 appsettings.Development.json
 
+/AGENTS.md
