@@ -1,5 +1,6 @@
 ﻿using BeatWatch_BackEnd.Data;
 using BeatWatch_BackEnd.Dtos;
+using BeatWatch_BackEnd.infrescture;
 using BeatWatch_BackEnd.Models;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -10,11 +11,13 @@ namespace BeatWatch_BackEnd.Services
     {
         private readonly MongoDbContext _context;
         private readonly ILogger<AlertaService> _logger;
+        private readonly IFcmNotificationService _fcmNotificationService;
 
-        public AlertaService(MongoDbContext context, ILogger<AlertaService> logger)
+        public AlertaService(MongoDbContext context, ILogger<AlertaService> logger, IFcmNotificationService fcmNotificationService)
         {
             _context = context;
             _logger = logger;
+            _fcmNotificationService = fcmNotificationService;
         }
 
         public async Task<AlertaResponseDto> RegistrarAlertaAsync(string idDispositivoIdentificador, CrearAlertaDto dto)
@@ -53,8 +56,8 @@ namespace BeatWatch_BackEnd.Services
 
             await _context.AlertasDispositivos.InsertOneAsync(nuevaAlerta);
 
-            // 3. Disparar Notificación Push (FCM / Firebase) en segundo plano
-            _ = EnviarNotificacionPushAsync(dispositivo.IdPaciente, dto.Tipo, dto.Mensaje);
+            // 3. La alerta ya es durable; un fallo de push no debe deshacer su registro.
+            await EnviarNotificacionPushAsync(dispositivo.IdPaciente, nuevaAlerta.Tipo, nuevaAlerta.Mensaje);
 
             return new AlertaResponseDto
             {
@@ -70,9 +73,28 @@ namespace BeatWatch_BackEnd.Services
         {
             try
             {
-                // Aquí va la llamada a Firebase Messaging (FCM) hacia los tokens registrados de los cuidadores/paciente
-                _logger.LogInformation("Notificación Push [FCM] enviada para una alerta de dispositivo.");
-                await Task.CompletedTask;
+                var paciente = await _context.Pacientes.Find(p => p.Id == idPaciente).FirstOrDefaultAsync();
+                if (paciente is null) return;
+
+                var usuarioPaciente = await _context.Usuarios.Find(u => u.Id == paciente.UsuarioId).FirstOrDefaultAsync();
+                if (usuarioPaciente is null) return;
+
+                var destinatarios = new[] { usuarioPaciente.Id! }.Concat(usuarioPaciente.Cuidadores).Distinct();
+                var usuarios = await _context.Usuarios.Find(u => destinatarios.Contains(u.Id!)).ToListAsync();
+                var tokens = usuarios.SelectMany(u => u.TokensFcm).Where(t => !string.IsNullOrWhiteSpace(t)).Distinct();
+
+                foreach (var token in tokens)
+                {
+                    try
+                    {
+                        var idMensaje = await _fcmNotificationService.EnviarAsync(token, $"Alerta {tipo}", mensaje);
+                        _logger.LogInformation("Notificación Push [FCM] confirmada para alerta de dispositivo. IdMensaje: {IdMensaje}", idMensaje);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error al enviar la notificación Push para una alerta de dispositivo.");
+                    }
+                }
             }
             catch (Exception ex)
             {
