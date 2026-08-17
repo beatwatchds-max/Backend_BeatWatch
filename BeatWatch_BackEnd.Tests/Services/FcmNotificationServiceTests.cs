@@ -40,7 +40,9 @@ public class FcmNotificationServiceTests
 
         var datos = AlertaService.CrearDatosFcm(alerta, "Alerta de frecuencia cardiaca");
 
+        Assert.Equal("Alerta de frecuencia cardiaca", datos["title"]);
         Assert.Equal("alerta-1", datos["alertId"]);
+        Assert.Equal("FRECUENCIA_ALTA", datos["tipo"]);
         Assert.Equal("120.5", datos["valorDetectado"]);
         Assert.Equal("2026-08-16T18:30:00.0000000Z", datos["timestamp"]);
         Assert.Equal("paciente-1", datos["pacienteId"]);
