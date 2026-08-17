@@ -58,7 +58,7 @@ public class FcmNotificationService : IFcmNotificationService
         {
             return await FirebaseMessaging.GetMessaging(_firebaseApp).SendAsync(mensaje, cancellationToken);
         }
-        catch (FirebaseMessagingException ex) when (ex.MessagingErrorCode is MessagingErrorCode.Unregistered or MessagingErrorCode.InvalidArgument)
+        catch (FirebaseMessagingException ex) when (ex.MessagingErrorCode == MessagingErrorCode.Unregistered)
         {
             throw new FcmTokenInvalidoException(ex);
         }

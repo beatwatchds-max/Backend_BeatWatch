@@ -2,6 +2,7 @@ using BeatWatch_BackEnd.Configuration;
 using BeatWatch_BackEnd.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using MongoDB.Bson;
 using MongoDB.Driver;
 
 namespace BeatWatch_BackEnd.Data
@@ -54,9 +55,16 @@ namespace BeatWatch_BackEnd.Data
                 };
 
                 var indexModel = new CreateIndexModel<EstadisticasDiarias>(indexKeys, indexOptions);
-
-            
                 EstadisticasDiarias.Indexes.CreateOne(indexModel);
+
+                var fcmTokenKeys = Builders<Usuario>.IndexKeys.Ascending(u => u.FcmToken);
+                var fcmTokenOptions = new CreateIndexOptions<Usuario>
+                {
+                    Unique = true,
+                    Name = "ux_FcmToken",
+                    PartialFilterExpression = new BsonDocument("FcmToken", new BsonDocument("$type", "string"))
+                };
+                Usuarios.Indexes.CreateOne(new CreateIndexModel<Usuario>(fcmTokenKeys, fcmTokenOptions));
             }
             catch (MongoCommandException ex)
             {

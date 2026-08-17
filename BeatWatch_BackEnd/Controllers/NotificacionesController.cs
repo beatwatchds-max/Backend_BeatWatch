@@ -45,7 +45,15 @@ public class NotificacionesController : ControllerBase
             .Set(u => u.FcmToken, token)
             .Set(u => u.FcmDeviceId, dto.DeviceId.Trim())
             .Set(u => u.FcmTokenActualizadoEn, DateTime.UtcNow);
-        var result = await _context.Usuarios.UpdateOneAsync(u => u.Id == usuarioId, update, cancellationToken: cancellationToken);
+        UpdateResult result;
+        try
+        {
+            result = await _context.Usuarios.UpdateOneAsync(u => u.Id == usuarioId, update, cancellationToken: cancellationToken);
+        }
+        catch (MongoWriteException ex) when (ex.WriteError?.Category == ServerErrorCategory.DuplicateKey)
+        {
+            return Conflict(new { mensaje = "El token FCM ya fue registrado por otra sesión." });
+        }
         if (result.MatchedCount == 0) return NotFound(new { mensaje = "Usuario no encontrado." });
 
         return NoContent();
