@@ -29,38 +29,39 @@ public class NotificacionesController : ControllerBase
         var usuarioId = ObtenerUsuarioId();
         if (usuarioId is null) return Unauthorized();
 
+        if (string.IsNullOrWhiteSpace(dto.Token) || string.IsNullOrWhiteSpace(dto.DeviceId) || string.IsNullOrWhiteSpace(dto.DeviceType))
+        {
+            return BadRequest(new { mensaje = "token, deviceId y deviceType son obligatorios." });
+        }
+
         var token = dto.Token.Trim();
-        var update = Builders<Usuario>.Update.AddToSet(u => u.TokensFcm, token);
+        var limpiarTokenDuplicado = Builders<Usuario>.Update
+            .Set(u => u.FcmToken, null)
+            .Set(u => u.FcmDeviceId, null)
+            .Set(u => u.FcmTokenActualizadoEn, null);
+        await _context.Usuarios.UpdateManyAsync(u => u.Id != usuarioId && u.FcmToken == token, limpiarTokenDuplicado, cancellationToken: cancellationToken);
+
+        var update = Builders<Usuario>.Update
+            .Set(u => u.FcmToken, token)
+            .Set(u => u.FcmDeviceId, dto.DeviceId.Trim())
+            .Set(u => u.FcmTokenActualizadoEn, DateTime.UtcNow);
         var result = await _context.Usuarios.UpdateOneAsync(u => u.Id == usuarioId, update, cancellationToken: cancellationToken);
         if (result.MatchedCount == 0) return NotFound(new { mensaje = "Usuario no encontrado." });
 
         return NoContent();
     }
 
-    [HttpDelete("token")]
-    public async Task<IActionResult> EliminarToken([FromBody] TokenFcmDto dto, CancellationToken cancellationToken)
-    {
-        var usuarioId = ObtenerUsuarioId();
-        if (usuarioId is null) return Unauthorized();
-
-        var update = Builders<Usuario>.Update.Pull(u => u.TokensFcm, dto.Token.Trim());
-        await _context.Usuarios.UpdateOneAsync(u => u.Id == usuarioId, update, cancellationToken: cancellationToken);
-        return NoContent();
-    }
-
+    // Ruta temporal: retirar o limitar antes de producción.
     [HttpPost("prueba")]
-    public async Task<IActionResult> EnviarPrueba([FromBody] TokenFcmDto dto, CancellationToken cancellationToken)
+    public async Task<IActionResult> EnviarPrueba(CancellationToken cancellationToken)
     {
         var usuarioId = ObtenerUsuarioId();
         if (usuarioId is null) return Unauthorized();
 
-        var token = dto.Token.Trim();
-        var perteneceAlUsuario = await _context.Usuarios
-            .Find(u => u.Id == usuarioId && u.TokensFcm.Contains(token))
-            .AnyAsync(cancellationToken);
-        if (!perteneceAlUsuario) return BadRequest(new { mensaje = "El token FCM no está registrado para el usuario autenticado." });
+        var usuario = await _context.Usuarios.Find(u => u.Id == usuarioId).FirstOrDefaultAsync(cancellationToken);
+        if (string.IsNullOrWhiteSpace(usuario?.FcmToken)) return BadRequest(new { mensaje = "El usuario autenticado no tiene un token FCM registrado." });
 
-        var idMensaje = await _fcmNotificationService.EnviarAsync(token, "Prueba BeatWatch", "Notificación FCM configurada correctamente.", cancellationToken);
+        var idMensaje = await _fcmNotificationService.EnviarAsync(usuario.FcmToken, "Prueba BeatWatch", "Notificación FCM configurada correctamente.", new Dictionary<string, string> { ["tipo"] = "prueba" }, cancellationToken);
         return Ok(new { mensaje = "Notificación de prueba enviada.", idMensaje });
     }
 

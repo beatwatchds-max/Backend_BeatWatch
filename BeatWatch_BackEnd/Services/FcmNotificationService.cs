@@ -36,7 +36,7 @@ public class FcmNotificationService : IFcmNotificationService
         }
     }
 
-    public Task<string> EnviarAsync(string token, string titulo, string cuerpo, CancellationToken cancellationToken = default)
+    public async Task<string> EnviarAsync(string token, string titulo, string cuerpo, IReadOnlyDictionary<string, string>? datos = null, CancellationToken cancellationToken = default)
     {
         if (_firebaseApp is null)
         {
@@ -50,9 +50,25 @@ public class FcmNotificationService : IFcmNotificationService
             {
                 Title = titulo,
                 Body = cuerpo
-            }
+            },
+            Data = datos is null ? null : new Dictionary<string, string>(datos)
         };
 
-        return FirebaseMessaging.GetMessaging(_firebaseApp).SendAsync(mensaje, cancellationToken);
+        try
+        {
+            return await FirebaseMessaging.GetMessaging(_firebaseApp).SendAsync(mensaje, cancellationToken);
+        }
+        catch (FirebaseMessagingException ex) when (ex.MessagingErrorCode is MessagingErrorCode.Unregistered or MessagingErrorCode.InvalidArgument)
+        {
+            throw new FcmTokenInvalidoException(ex);
+        }
+    }
+}
+
+public sealed class FcmTokenInvalidoException : Exception
+{
+    public FcmTokenInvalidoException(Exception innerException)
+        : base("Firebase rechazó el token FCM como inválido.", innerException)
+    {
     }
 }

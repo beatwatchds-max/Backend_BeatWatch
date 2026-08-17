@@ -40,9 +40,17 @@ namespace BeatWatch_BackEnd.Models
         [BsonElement("TokenMovil")]
         public string? TokenMovil { get; set; }
 
-        [BsonElement("TokensFcm")]
+        [BsonElement("FcmToken")]
         [JsonIgnore]
-        public List<string> TokensFcm { get; set; } = new();
+        public string? FcmToken { get; set; }
+
+        [BsonElement("FcmDeviceId")]
+        [JsonIgnore]
+        public string? FcmDeviceId { get; set; }
+
+        [BsonElement("FcmTokenActualizadoEn")]
+        [JsonIgnore]
+        public DateTime? FcmTokenActualizadoEn { get; set; }
 
         [BsonElement("Rol")]
         public string Rol { get; set; } = "Paciente";

@@ -4,6 +4,7 @@ using BeatWatch_BackEnd.infrescture;
 using BeatWatch_BackEnd.Models;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using System.Globalization;
 
 namespace BeatWatch_BackEnd.Services
 {
@@ -57,7 +58,7 @@ namespace BeatWatch_BackEnd.Services
             await _context.AlertasDispositivos.InsertOneAsync(nuevaAlerta);
 
             // 3. La alerta ya es durable; un fallo de push no debe deshacer su registro.
-            await EnviarNotificacionPushAsync(dispositivo.IdPaciente, nuevaAlerta.Tipo, nuevaAlerta.Mensaje);
+            await EnviarNotificacionPushAsync(nuevaAlerta);
 
             return new AlertaResponseDto
             {
@@ -69,31 +70,44 @@ namespace BeatWatch_BackEnd.Services
             };
         }
 
-        private async Task EnviarNotificacionPushAsync(string idPaciente, string tipo, string mensaje)
+        private async Task EnviarNotificacionPushAsync(AlertaDispositivo alerta)
         {
             try
             {
-                var paciente = await _context.Pacientes.Find(p => p.Id == idPaciente).FirstOrDefaultAsync();
+                var paciente = await _context.Pacientes.Find(p => p.Id == alerta.IdPaciente).FirstOrDefaultAsync();
                 if (paciente is null) return;
 
                 var usuarioPaciente = await _context.Usuarios.Find(u => u.Id == paciente.UsuarioId).FirstOrDefaultAsync();
-                if (usuarioPaciente is null) return;
+                if (string.IsNullOrWhiteSpace(usuarioPaciente?.FcmToken)) return;
 
-                var destinatarios = new[] { usuarioPaciente.Id! }.Concat(usuarioPaciente.Cuidadores).Distinct();
-                var usuarios = await _context.Usuarios.Find(u => destinatarios.Contains(u.Id!)).ToListAsync();
-                var tokens = usuarios.SelectMany(u => u.TokensFcm).Where(t => !string.IsNullOrWhiteSpace(t)).Distinct();
-
-                foreach (var token in tokens)
+                try
                 {
-                    try
+                    var titulo = $"Alerta {alerta.Tipo}";
+                    var datos = new Dictionary<string, string>
                     {
-                        var idMensaje = await _fcmNotificationService.EnviarAsync(token, $"Alerta {tipo}", mensaje);
-                        _logger.LogInformation("Notificación Push [FCM] confirmada para alerta de dispositivo. IdMensaje: {IdMensaje}", idMensaje);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Error al enviar la notificación Push para una alerta de dispositivo.");
-                    }
+                        ["title"] = titulo,
+                        ["body"] = alerta.Mensaje,
+                        ["alertId"] = alerta.Id ?? string.Empty,
+                        ["tipo"] = alerta.Tipo,
+                        ["valorDetectado"] = alerta.ValorDetectado.ToString(CultureInfo.InvariantCulture),
+                        ["pacienteId"] = alerta.IdPaciente,
+                        ["timestamp"] = alerta.Timestamp.ToString("O", CultureInfo.InvariantCulture)
+                    };
+                    var idMensaje = await _fcmNotificationService.EnviarAsync(usuarioPaciente.FcmToken, titulo, alerta.Mensaje, datos);
+                    _logger.LogInformation("Notificación Push [FCM] confirmada para alerta de dispositivo. IdMensaje: {IdMensaje}", idMensaje);
+                }
+                catch (FcmTokenInvalidoException ex)
+                {
+                    var limpiarToken = Builders<Usuario>.Update
+                        .Set(u => u.FcmToken, null)
+                        .Set(u => u.FcmDeviceId, null)
+                        .Set(u => u.FcmTokenActualizadoEn, null);
+                    await _context.Usuarios.UpdateOneAsync(u => u.Id == usuarioPaciente.Id, limpiarToken);
+                    _logger.LogWarning(ex, "Firebase rechazó el token FCM del usuario destinatario; se eliminó el registro del dispositivo.");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error técnico al enviar la notificación Push para una alerta de dispositivo.");
                 }
             }
             catch (Exception ex)
