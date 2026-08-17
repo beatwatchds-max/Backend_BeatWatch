@@ -59,7 +59,11 @@ namespace BeatWatch_BackEnd.Services
                 {
                     Unique = true,
                     Name = "ux_FcmToken",
-                    PartialFilterExpression = new BsonDocument("FcmToken", new BsonDocument("$type", "string"))
+                    PartialFilterExpression = new BsonDocument("FcmToken", new BsonDocument
+                    {
+                        { "$type", "string" },
+                        { "$gt", string.Empty }
+                    })
                 };
                 await _context.Usuarios.Indexes.CreateOneAsync(
                     new CreateIndexModel<Usuario>(fcmTokenKeys, fcmTokenOptions),
@@ -119,9 +123,10 @@ namespace BeatWatch_BackEnd.Services
             var indices = await cursor.ToListAsync(cancellationToken);
             var indice = indices.FirstOrDefault(i => i.GetValue("name", string.Empty) == "ux_FcmToken");
             var claveCorrecta = indice?["key"]?.AsBsonDocument.TryGetValue("FcmToken", out var orden) == true && orden == 1;
-            var filtroCorrecto = indice?["partialFilterExpression"]?.AsBsonDocument
-                .GetValue("FcmToken", BsonNull.Value).AsBsonDocument
-                .GetValue("$type", BsonNull.Value) == "string";
+            var filtroToken = indice?["partialFilterExpression"]?.AsBsonDocument
+                .GetValue("FcmToken", BsonNull.Value).AsBsonDocument;
+            var filtroCorrecto = filtroToken?.GetValue("$type", BsonNull.Value) == "string"
+                && filtroToken.GetValue("$gt", BsonNull.Value) == string.Empty;
             if (indice is null || !indice.GetValue("unique", false).ToBoolean() || !claveCorrecta || !filtroCorrecto)
             {
                 throw new InvalidOperationException("No se pudo verificar el índice único ux_FcmToken.");

@@ -28,6 +28,8 @@ public sealed class FcmTokenIndexIntegrationTests : IClassFixture<BeatWatchApiFa
         await context.Usuarios.InsertOneAsync(new Usuario { Nombre = "Uno", Correo = "uno@test.local", Telefono = "1", Contrasena = "hash", FcmToken = "fcm-token-unico", FcmTokenActualizadoEn = DateTime.UtcNow.AddMinutes(-1) });
         await context.Usuarios.InsertOneAsync(new Usuario { Nombre = "Actual", Correo = "actual@test.local", Telefono = "3", Contrasena = "hash", FcmToken = "fcm-token-unico", FcmTokenActualizadoEn = DateTime.UtcNow });
         await context.Usuarios.InsertOneAsync(new Usuario { Nombre = "Sin token", Correo = "sin-token@test.local", Telefono = "2", Contrasena = "hash" });
+        await context.Usuarios.InsertOneAsync(new Usuario { Nombre = "Token vacío uno", Correo = "vacio-uno@test.local", Telefono = "4", Contrasena = "hash", FcmToken = string.Empty });
+        await context.Usuarios.InsertOneAsync(new Usuario { Nombre = "Token vacío dos", Correo = "vacio-dos@test.local", Telefono = "5", Contrasena = "hash", FcmToken = string.Empty });
 
         var initializer = new MongoDbInitializer(context, NullLogger<MongoDbInitializer>.Instance);
         await initializer.StartAsync(CancellationToken.None);
@@ -37,6 +39,6 @@ public sealed class FcmTokenIndexIntegrationTests : IClassFixture<BeatWatchApiFa
         Assert.Equal("actual@test.local", usuariosConToken[0].Correo);
 
         await Assert.ThrowsAsync<MongoWriteException>(() => context.Usuarios.InsertOneAsync(
-            new Usuario { Nombre = "Dos", Correo = "dos@test.local", Telefono = "4", Contrasena = "hash", FcmToken = "fcm-token-unico" }));
+            new Usuario { Nombre = "Dos", Correo = "dos@test.local", Telefono = "6", Contrasena = "hash", FcmToken = "fcm-token-unico" }));
     }
 }
