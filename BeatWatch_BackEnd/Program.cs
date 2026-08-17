@@ -131,7 +131,12 @@ builder.Services.AddRateLimiter(options =>
     options.AddPolicy("license-activation", context =>
         RateLimitPartition.GetFixedWindowLimiter(
             context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-            _ => new FixedWindowRateLimiterOptions { PermitLimit = 2, Window = TimeSpan.FromHours(1), QueueLimit = 0 }));
+             _ => new FixedWindowRateLimiterOptions { PermitLimit = 2, Window = TimeSpan.FromHours(1), QueueLimit = 0 }));
+
+    options.AddPolicy("notification-test", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions { PermitLimit = 3, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
 });
 
 // --- INYECCIÓN DE DEPENDENCIAS ---
@@ -229,8 +234,8 @@ app.Use(async (context, next) =>
 // --- 2. USAR CORS (DEBE IR ANTES DE AUTHENTICATION Y AUTHORIZATION) ---
 app.UseCors("AllowFrontend");
 
-app.UseRateLimiter();
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
 
 app.MapControllers();

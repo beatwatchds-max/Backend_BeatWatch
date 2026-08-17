@@ -51,6 +51,7 @@ public sealed class AlertaFcmIntegrationTests : IClassFixture<BeatWatchApiFactor
         Assert.Equal("fcm-token", usuario!.FcmToken);
         Assert.Equal("device-id", usuario.FcmDeviceId);
         Assert.NotNull(fcm.Datos);
+        Assert.Equal("Alerta FRECUENCIA_ALTA", fcm.Datos!["title"]);
         Assert.Equal("FRECUENCIA_ALTA", fcm.Datos!["tipo"]);
         Assert.Equal("120", fcm.Datos["valorDetectado"]);
         Assert.Equal(datos.PacienteId, fcm.Datos["pacienteId"]);

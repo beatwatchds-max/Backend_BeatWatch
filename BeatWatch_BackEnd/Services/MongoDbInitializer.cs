@@ -53,6 +53,19 @@ namespace BeatWatch_BackEnd.Services
                     cancellationToken: cancellationToken);
                 _logger.LogInformation("Unique index created/verified on Dispositivos (NumeroSerie).");
 
+                var estadisticasIndexKeys = Builders<EstadisticasDiarias>.IndexKeys
+                    .Ascending(e => e.IdPaciente)
+                    .Ascending(e => e.Fecha);
+                var estadisticasIndexOptions = new CreateIndexOptions
+                {
+                    Unique = true,
+                    Name = "ux_IdPaciente_Fecha"
+                };
+                await _context.EstadisticasDiarias.Indexes.CreateOneAsync(
+                    new CreateIndexModel<EstadisticasDiarias>(estadisticasIndexKeys, estadisticasIndexOptions),
+                    cancellationToken: cancellationToken);
+                _logger.LogInformation("Unique index created/verified on EstadisticasDiarias (IdPaciente, Fecha).");
+
                 await ResolverTokensFcmDuplicadosAsync(cancellationToken);
                 var fcmTokenKeys = Builders<Usuario>.IndexKeys.Ascending(u => u.FcmToken);
                 var fcmTokenOptions = new CreateIndexOptions<Usuario>
@@ -92,8 +105,13 @@ namespace BeatWatch_BackEnd.Services
 
         private async Task ResolverTokensFcmDuplicadosAsync(CancellationToken cancellationToken)
         {
+            var filtroTokenFcmValido = new BsonDocument("FcmToken", new BsonDocument
+            {
+                { "$type", "string" },
+                { "$gt", string.Empty }
+            });
             var usuarios = await _context.Usuarios
-                .Find(u => u.FcmToken != null && u.FcmToken != string.Empty)
+                .Find(filtroTokenFcmValido)
                 .ToListAsync(cancellationToken);
             var duplicados = usuarios
                 .GroupBy(u => u.FcmToken!, StringComparer.Ordinal)

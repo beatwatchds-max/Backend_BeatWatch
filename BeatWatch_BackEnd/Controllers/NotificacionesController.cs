@@ -5,6 +5,7 @@ using BeatWatch_BackEnd.infrescture;
 using BeatWatch_BackEnd.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using MongoDB.Driver;
 
 namespace BeatWatch_BackEnd.Controllers;
@@ -61,6 +62,7 @@ public class NotificacionesController : ControllerBase
 
     // Ruta temporal: retirar o limitar antes de producción.
     [HttpPost("prueba")]
+    [EnableRateLimiting("notification-test")]
     public async Task<IActionResult> EnviarPrueba(CancellationToken cancellationToken)
     {
         var usuarioId = ObtenerUsuarioId();
