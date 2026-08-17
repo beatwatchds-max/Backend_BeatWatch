@@ -83,16 +83,7 @@ namespace BeatWatch_BackEnd.Services
                 try
                 {
                     var titulo = $"Alerta {alerta.Tipo}";
-                    var datos = new Dictionary<string, string>
-                    {
-                        ["title"] = titulo,
-                        ["body"] = alerta.Mensaje,
-                        ["alertId"] = alerta.Id ?? string.Empty,
-                        ["tipo"] = alerta.Tipo,
-                        ["valorDetectado"] = alerta.ValorDetectado.ToString(CultureInfo.InvariantCulture),
-                        ["pacienteId"] = alerta.IdPaciente,
-                        ["timestamp"] = alerta.Timestamp.ToString("O", CultureInfo.InvariantCulture)
-                    };
+                    var datos = CrearDatosFcm(alerta, titulo);
                     var idMensaje = await _fcmNotificationService.EnviarAsync(usuarioPaciente.FcmToken, titulo, alerta.Mensaje, datos);
                     _logger.LogInformation("Notificación Push [FCM] confirmada para alerta de dispositivo. IdMensaje: {IdMensaje}", idMensaje);
                 }
@@ -115,5 +106,16 @@ namespace BeatWatch_BackEnd.Services
                 _logger.LogError(ex, "Error al enviar la notificación Push para una alerta de dispositivo.");
             }
         }
+
+        internal static IReadOnlyDictionary<string, string> CrearDatosFcm(AlertaDispositivo alerta, string titulo) => new Dictionary<string, string>
+        {
+            ["title"] = titulo,
+            ["body"] = alerta.Mensaje,
+            ["alertId"] = alerta.Id ?? string.Empty,
+            ["tipo"] = alerta.Tipo,
+            ["valorDetectado"] = alerta.ValorDetectado.ToString(CultureInfo.InvariantCulture),
+            ["pacienteId"] = alerta.IdPaciente,
+            ["timestamp"] = alerta.Timestamp.ToString("O", CultureInfo.InvariantCulture)
+        };
     }
 }

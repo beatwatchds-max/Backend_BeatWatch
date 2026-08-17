@@ -43,26 +43,30 @@ public class FcmNotificationService : IFcmNotificationService
             throw new InvalidOperationException("FCM no está configurado.");
         }
 
-        var mensaje = new Message
-        {
-            Token = token,
-            Notification = new Notification
-            {
-                Title = titulo,
-                Body = cuerpo
-            },
-            Data = datos is null ? null : new Dictionary<string, string>(datos)
-        };
+        var mensaje = CrearMensaje(token, titulo, cuerpo, datos);
 
         try
         {
             return await FirebaseMessaging.GetMessaging(_firebaseApp).SendAsync(mensaje, cancellationToken);
         }
-        catch (FirebaseMessagingException ex) when (ex.MessagingErrorCode == MessagingErrorCode.Unregistered)
+        catch (FirebaseMessagingException ex) when (EsTokenInvalido(ex.MessagingErrorCode))
         {
             throw new FcmTokenInvalidoException(ex);
         }
     }
+
+    internal static bool EsTokenInvalido(MessagingErrorCode? errorCode) => errorCode == MessagingErrorCode.Unregistered;
+
+    internal static Message CrearMensaje(string token, string titulo, string cuerpo, IReadOnlyDictionary<string, string>? datos) => new()
+    {
+        Token = token,
+        Notification = new Notification
+        {
+            Title = titulo,
+            Body = cuerpo
+        },
+        Data = datos is null ? null : new Dictionary<string, string>(datos)
+    };
 }
 
 public sealed class FcmTokenInvalidoException : Exception

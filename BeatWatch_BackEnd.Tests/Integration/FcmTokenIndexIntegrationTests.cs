@@ -1,6 +1,7 @@
 using BeatWatch_BackEnd.Configuration;
 using BeatWatch_BackEnd.Data;
 using BeatWatch_BackEnd.Models;
+using BeatWatch_BackEnd.Services;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
@@ -24,10 +25,18 @@ public sealed class FcmTokenIndexIntegrationTests : IClassFixture<BeatWatchApiFa
             Options.Create(new MongoDbSettings { ConnectionString = connectionString, DatabaseName = _factory.DatabaseName }),
             NullLogger<MongoDbContext>.Instance);
 
-        await context.Usuarios.InsertOneAsync(new Usuario { Nombre = "Uno", Correo = "uno@test.local", Telefono = "1", Contrasena = "hash", FcmToken = "fcm-token-unico" });
+        await context.Usuarios.InsertOneAsync(new Usuario { Nombre = "Uno", Correo = "uno@test.local", Telefono = "1", Contrasena = "hash", FcmToken = "fcm-token-unico", FcmTokenActualizadoEn = DateTime.UtcNow.AddMinutes(-1) });
+        await context.Usuarios.InsertOneAsync(new Usuario { Nombre = "Actual", Correo = "actual@test.local", Telefono = "3", Contrasena = "hash", FcmToken = "fcm-token-unico", FcmTokenActualizadoEn = DateTime.UtcNow });
         await context.Usuarios.InsertOneAsync(new Usuario { Nombre = "Sin token", Correo = "sin-token@test.local", Telefono = "2", Contrasena = "hash" });
 
+        var initializer = new MongoDbInitializer(context, NullLogger<MongoDbInitializer>.Instance);
+        await initializer.StartAsync(CancellationToken.None);
+
+        var usuariosConToken = await context.Usuarios.Find(u => u.FcmToken == "fcm-token-unico").ToListAsync();
+        Assert.Single(usuariosConToken);
+        Assert.Equal("actual@test.local", usuariosConToken[0].Correo);
+
         await Assert.ThrowsAsync<MongoWriteException>(() => context.Usuarios.InsertOneAsync(
-            new Usuario { Nombre = "Dos", Correo = "dos@test.local", Telefono = "3", Contrasena = "hash", FcmToken = "fcm-token-unico" }));
+            new Usuario { Nombre = "Dos", Correo = "dos@test.local", Telefono = "4", Contrasena = "hash", FcmToken = "fcm-token-unico" }));
     }
 }
