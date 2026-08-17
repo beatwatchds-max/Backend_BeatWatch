@@ -173,7 +173,10 @@ namespace BeatWatch_BackEnd.Services
         {
             var updateUsuario = Builders<Usuario>.Update
                 .Set(u => u.SesionActiva, false)
-                .Set(u => u.UltimaSesionId, null);
+                .Set(u => u.UltimaSesionId, null)
+                .Set(u => u.FcmToken, null)
+                .Set(u => u.FcmDeviceId, null)
+                .Set(u => u.FcmTokenActualizadoEn, null);
 
             var result = await _context.Usuarios.UpdateOneAsync(u => u.Id == usuarioId, updateUsuario);
             return result.ModifiedCount > 0;

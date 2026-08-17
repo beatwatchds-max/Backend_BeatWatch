@@ -42,7 +42,6 @@ namespace BeatWatch_BackEnd.Data
         {
             try
             {
-         
                 var indexKeys = Builders<EstadisticasDiarias>.IndexKeys
                     .Ascending(e => e.IdPaciente)
                     .Ascending(e => e.Fecha);
@@ -54,13 +53,10 @@ namespace BeatWatch_BackEnd.Data
                 };
 
                 var indexModel = new CreateIndexModel<EstadisticasDiarias>(indexKeys, indexOptions);
-
-            
                 EstadisticasDiarias.Indexes.CreateOne(indexModel);
             }
             catch (MongoCommandException ex)
             {
-                // Loggear advertencia (por ejemplo con ILogger o Console)
                 _logger.LogWarning("Nota de Índice: {Message}", ex.Message);
             }
             catch (Exception ex)

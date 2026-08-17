@@ -25,6 +25,10 @@ En despliegues, usa las variables de entorno de `.env.example` desde un gestor d
 
 La clave de sitio de reCAPTCHA debe configurarse en el cliente web; el backend usa exclusivamente `RecaptchaSettings:SecretKey` para verificar los tokens.
 
+## Firebase Cloud Messaging
+
+No agregues la cuenta de servicio de Firebase a `appsettings.json`. En Render configura uno de estos secretos: `FIREBASE_SERVICE_ACCOUNT_JSON` con el JSON completo de la cuenta de servicio, o `FIREBASE_SERVICE_ACCOUNT_FILE` con la ruta a un archivo secreto montado. La API requiere JWT para `PUT /api/Notificaciones/token`, con `{ "token": "<fcm-token>", "deviceId": "<id-dispositivo>", "deviceType": "android" }`. La ruta temporal de comprobación `POST /api/Notificaciones/prueba` usa exclusivamente el token del usuario autenticado. El cierre de sesión móvil elimina los campos FCM de esa sesión.
+
 
 ## Recuperacion de contrasena
 

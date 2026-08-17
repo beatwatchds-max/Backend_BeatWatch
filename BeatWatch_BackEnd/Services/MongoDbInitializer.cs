@@ -1,5 +1,6 @@
 using BeatWatch_BackEnd.Data;
 using BeatWatch_BackEnd.Models;
+using MongoDB.Bson;
 using MongoDB.Driver;
 
 namespace BeatWatch_BackEnd.Services
@@ -52,6 +53,24 @@ namespace BeatWatch_BackEnd.Services
                     cancellationToken: cancellationToken);
                 _logger.LogInformation("Unique index created/verified on Dispositivos (NumeroSerie).");
 
+                await ResolverTokensFcmDuplicadosAsync(cancellationToken);
+                var fcmTokenKeys = Builders<Usuario>.IndexKeys.Ascending(u => u.FcmToken);
+                var fcmTokenOptions = new CreateIndexOptions<Usuario>
+                {
+                    Unique = true,
+                    Name = "ux_FcmToken",
+                    PartialFilterExpression = new BsonDocument("FcmToken", new BsonDocument
+                    {
+                        { "$type", "string" },
+                        { "$gt", string.Empty }
+                    })
+                };
+                await _context.Usuarios.Indexes.CreateOneAsync(
+                    new CreateIndexModel<Usuario>(fcmTokenKeys, fcmTokenOptions),
+                    cancellationToken: cancellationToken);
+                await VerificarIndiceFcmAsync(cancellationToken);
+                _logger.LogInformation("Unique partial index created/verified on Usuarios (FcmToken).");
+
                 // Pairing sessions are valid for minutes; remove plaintext legacy secrets once expired.
                 var sesionesExpiradas = Builders<SesionEmparejamiento>.Filter.Lt(s => s.FechaExpiracion, DateTime.UtcNow);
                 var limpiarSecretos = Builders<SesionEmparejamiento>.Update
@@ -70,5 +89,53 @@ namespace BeatWatch_BackEnd.Services
         }
 
         public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+        private async Task ResolverTokensFcmDuplicadosAsync(CancellationToken cancellationToken)
+        {
+            var filtroTokenFcmValido = new BsonDocument("FcmToken", new BsonDocument
+            {
+                { "$type", "string" },
+                { "$gt", string.Empty }
+            });
+            var usuarios = await _context.Usuarios
+                .Find(filtroTokenFcmValido)
+                .ToListAsync(cancellationToken);
+            var duplicados = usuarios
+                .GroupBy(u => u.FcmToken!, StringComparer.Ordinal)
+                .Where(g => g.Count() > 1);
+
+            foreach (var grupo in duplicados)
+            {
+                var conservar = grupo
+                    .OrderByDescending(u => u.FcmTokenActualizadoEn ?? DateTime.MinValue)
+                    .ThenByDescending(u => u.Id, StringComparer.Ordinal)
+                    .First();
+                var limpiar = Builders<Usuario>.Update
+                    .Set(u => u.FcmToken, null)
+                    .Set(u => u.FcmDeviceId, null)
+                    .Set(u => u.FcmTokenActualizadoEn, null);
+                await _context.Usuarios.UpdateManyAsync(
+                    u => u.FcmToken == grupo.Key && u.Id != conservar.Id,
+                    limpiar,
+                    cancellationToken: cancellationToken);
+                _logger.LogWarning("Se resolvió un token FCM duplicado conservando el registro actualizado más recientemente.");
+            }
+        }
+
+        private async Task VerificarIndiceFcmAsync(CancellationToken cancellationToken)
+        {
+            using var cursor = await _context.Usuarios.Indexes.ListAsync(cancellationToken);
+            var indices = await cursor.ToListAsync(cancellationToken);
+            var indice = indices.FirstOrDefault(i => i.GetValue("name", string.Empty) == "ux_FcmToken");
+            var claveCorrecta = indice?["key"]?.AsBsonDocument.TryGetValue("FcmToken", out var orden) == true && orden == 1;
+            var filtroToken = indice?["partialFilterExpression"]?.AsBsonDocument
+                .GetValue("FcmToken", BsonNull.Value).AsBsonDocument;
+            var filtroCorrecto = filtroToken?.GetValue("$type", BsonNull.Value) == "string"
+                && filtroToken.GetValue("$gt", BsonNull.Value) == string.Empty;
+            if (indice is null || !indice.GetValue("unique", false).ToBoolean() || !claveCorrecta || !filtroCorrecto)
+            {
+                throw new InvalidOperationException("No se pudo verificar el índice único ux_FcmToken.");
+            }
+        }
     }
 }

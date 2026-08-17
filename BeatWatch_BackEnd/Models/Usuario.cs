@@ -39,6 +39,19 @@ namespace BeatWatch_BackEnd.Models
         public List<string> Cuidadores { get; set; } = new();
         [BsonElement("TokenMovil")]
         public string? TokenMovil { get; set; }
+
+        [BsonElement("FcmToken")]
+        [JsonIgnore]
+        public string? FcmToken { get; set; }
+
+        [BsonElement("FcmDeviceId")]
+        [JsonIgnore]
+        public string? FcmDeviceId { get; set; }
+
+        [BsonElement("FcmTokenActualizadoEn")]
+        [JsonIgnore]
+        public DateTime? FcmTokenActualizadoEn { get; set; }
+
         [BsonElement("Rol")]
         public string Rol { get; set; } = "Paciente";
 
