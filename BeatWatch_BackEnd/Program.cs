@@ -161,8 +161,9 @@ builder.Services.AddScoped<ISaludService, SaludService>();
 builder.Services.AddHostedService<MongoDbInitializer>();
 builder.Services.AddScoped<IEstadisticaService, EstadisticaService>();
 builder.Services.AddScoped<IMedicionService, MedicionService>();
-builder.Services.AddScoped<IAlertaService, AlertaService>();
 builder.Services.AddSingleton<IFcmNotificationService, FcmNotificationService>();
+builder.Services.AddScoped<IAlertaService, AlertaService>();
+
 builder.Services.AddControllers();
 builder.Services.AddHealthChecks();
 

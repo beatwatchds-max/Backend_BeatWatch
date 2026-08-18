@@ -74,36 +74,65 @@ namespace BeatWatch_BackEnd.Services
         {
             try
             {
+                // 1. Obtener al paciente y su usuario
                 var paciente = await _context.Pacientes.Find(p => p.Id == alerta.IdPaciente).FirstOrDefaultAsync();
                 if (paciente is null) return;
 
                 var usuarioPaciente = await _context.Usuarios.Find(u => u.Id == paciente.UsuarioId).FirstOrDefaultAsync();
-                if (string.IsNullOrWhiteSpace(usuarioPaciente?.FcmToken)) return;
 
-                try
+                // 2. Recolectar tokens de destino
+                var tokensDestino = new List<string>();
+
+                // Token del paciente (si tiene)
+                if (!string.IsNullOrWhiteSpace(usuarioPaciente?.FcmToken))
                 {
-                    var titulo = $"Alerta {alerta.Tipo}";
-                    var datos = CrearDatosFcm(alerta, titulo);
-                    var idMensaje = await _fcmNotificationService.EnviarAsync(usuarioPaciente.FcmToken, titulo, alerta.Mensaje, datos);
-                    _logger.LogInformation("Notificación Push [FCM] confirmada para alerta de dispositivo. IdMensaje: {IdMensaje}", idMensaje);
+                    tokensDestino.Add(usuarioPaciente.FcmToken);
                 }
-                catch (FcmTokenInvalidoException ex)
+
+                // Tokens de los Cuidadores (si el paciente tiene cuidadores asignados)
+                if (usuarioPaciente != null && usuarioPaciente.Cuidadores.Any())
                 {
-                    var limpiarToken = Builders<Usuario>.Update
-                        .Set(u => u.FcmToken, null)
-                        .Set(u => u.FcmDeviceId, null)
-                        .Set(u => u.FcmTokenActualizadoEn, null);
-                    await _context.Usuarios.UpdateOneAsync(u => u.Id == usuarioPaciente.Id, limpiarToken);
-                    _logger.LogWarning(ex, "Firebase rechazó el token FCM del usuario destinatario; se eliminó el registro del dispositivo.");
+                    var cuidadores = await _context.Usuarios
+                        .Find(u => usuarioPaciente.Cuidadores.Contains(u.Id))
+                        .ToListAsync();
+
+                    var tokensCuidadores = cuidadores
+                        .Where(c => !string.IsNullOrWhiteSpace(c.FcmToken))
+                        .Select(c => c.FcmToken!);
+
+                    tokensDestino.AddRange(tokensCuidadores);
                 }
-                catch (Exception ex)
+
+                // Si nadie tiene un dispositivo móvil vinculado, salimos
+                if (!tokensDestino.Any()) return;
+
+                var titulo = $"Alerta {alerta.Tipo}";
+                var datos = CrearDatosFcm(alerta, titulo);
+
+                // 3. Enviar la notificación a todos los dispositivos en paralelo
+                foreach (var token in tokensDestino.Distinct())
                 {
-                    _logger.LogError(ex, "Error técnico al enviar la notificación Push para una alerta de dispositivo.");
+                    try
+                    {
+                        var idMensaje = await _fcmNotificationService.EnviarAsync(token, titulo, alerta.Mensaje, datos);
+                        _logger.LogInformation("Notificación Push [FCM] enviada exitosamente. IdMensaje: {IdMensaje}", idMensaje);
+                    }
+                    catch (FcmTokenInvalidoException)
+                    {
+                        // Limpiar token inválido
+                        var limpiarToken = Builders<Usuario>.Update
+                            .Set(u => u.FcmToken, null)
+                            .Set(u => u.FcmDeviceId, null)
+                            .Set(u => u.FcmTokenActualizadoEn, null);
+
+                        await _context.Usuarios.UpdateOneAsync(u => u.FcmToken == token, limpiarToken);
+                        _logger.LogWarning("Firebase rechazó un token FCM; registro eliminado de MongoDB.");
+                    }
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error al enviar la notificación Push para una alerta de dispositivo.");
+                _logger.LogError(ex, "Error técnico al procesar el envío de notificaciones Push para alerta.");
             }
         }
 
